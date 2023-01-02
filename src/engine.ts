@@ -40,21 +40,44 @@ export class Engine {
       x.onCreated();
     }
 
-    const startTime = (window.performance || Date).now();
+    let dateOrPerformance = (window.performance || Date);
 
     let firstSim = true;
 
-    let prevTime = startTime / 1000;
-    let onAnimationFrame = () => {
-      let repCount = firstSim ? 1 : 1;
-      firstSim = false;
+    let prevTime = dateOrPerformance.now();
 
-      this.time = ((window.performance || Date).now() - startTime) / 1000;
-      let deltaTime = this.time - prevTime;
-      prevTime = this.time;
-      for(let i=0; i<repCount; i++) {
-        this.onUpdate(this.time, deltaTime);
+    // In chrome, when the window is not visible (Es: minimized or another window is maximized) the requestAnimationFrame
+    // does not fire. It will fire again when the window becomes visible, resulting in a long deltaTime.
+    // To prevent that, disable the playing status and reset prevTime when becoming visible
+    let isPlaying = true;
+    addEventListener('visibilitychange', (event) => {
+      if (document.visibilityState === "visible") {
+        isPlaying = true;
+        prevTime = dateOrPerformance.now();
+        console.log("visible");
+      } else {
+        isPlaying = false;
+        console.log("hidden");
       }
+     });
+
+    let onAnimationFrame = () => {
+      if (isPlaying) {
+        let repCount = firstSim ? 1 : 1;
+        firstSim = false;
+  
+        let curTime = dateOrPerformance.now();
+        let deltaTime = (curTime - prevTime) / 1000;
+        prevTime = curTime;
+
+        if (deltaTime > 0) {
+          this.time += deltaTime;
+          for(let i=0; i<repCount; i++) {
+            this.onUpdate(this.time, deltaTime);
+          }
+        }
+      }
+      // Request anyway
       requestAnimationFrame(onAnimationFrame);
     }
     onAnimationFrame();
