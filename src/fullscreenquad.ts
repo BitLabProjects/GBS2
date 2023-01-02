@@ -87,18 +87,20 @@ export class FullScreenQuad implements Node {
 
   onUpdate(time: number, deltaTime: number): void {
     let gl = this.scene.engine.gl;
+    let ext = this.scene.engine.ext;
 
-    this.bindBuffers(gl);
+    this.bindBuffers(gl, ext);
 
     this.scene.engine.useMaterial(this.material);
     gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
   }
 
-  private bindBuffers(gl: WebGLRenderingContext) {
+  private bindBuffers(gl: WebGLRenderingContext, ext: ANGLE_instanced_arrays) {
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
     const posLocation = gl.getAttribLocation(this.material.shaderProgram, "a_position");
     gl.vertexAttribPointer(posLocation, 2, gl.FLOAT, false, 2 * 4, 0);
     gl.enableVertexAttribArray(posLocation);
+    ext.vertexAttribDivisorANGLE(posLocation, 0);
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.elementBuffer);
   }
