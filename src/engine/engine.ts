@@ -8,7 +8,7 @@ export class Engine {
   public scene: Scene;
   private time: number;
 
-  constructor(private canvas: HTMLCanvasElement) {
+  constructor(public readonly canvas: HTMLCanvasElement) {
     this.gl = canvas.getContext("webgl2", {antialias: false});
   }
 

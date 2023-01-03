@@ -1,5 +1,6 @@
 {
   "devDependencies": {
+    "@types/qrcode": "^1.5.0",
     "copy-webpack-plugin": "^11.0.0",
     "html-webpack-plugin": "^5.5.0",
     "ts-loader": "^9.4.2",
@@ -45,6 +46,7 @@
     "json-parse-even-better-errors": "^2.3.1",
     "json-schema-traverse": "^0.4.1",
     "loader-runner": "^4.3.0",
+    "loglevel": "^1.8.1",
     "lru-cache": "^6.0.0",
     "merge-stream": "^2.0.0",
     "micromatch": "^4.0.5",
@@ -52,9 +54,12 @@
     "mime-types": "^2.1.35",
     "neo-async": "^2.6.2",
     "node-releases": "^2.0.8",
+    "peerjs": "^1.4.7",
     "picocolors": "^1.0.0",
     "picomatch": "^2.3.1",
     "punycode": "^2.1.1",
+    "qrcode": "^1.5.1",
+    "query-string": "^8.1.0",
     "randombytes": "^2.1.0",
     "safe-buffer": "^5.2.1",
     "schema-utils": "^3.1.1",
