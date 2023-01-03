@@ -21,7 +21,7 @@ export class FullScreenQuad implements Node {
        }
       `,
       `#version 300 es
-       precision lowp float;
+       precision highp float;
        in vec2 v_position;
        out vec4 color;
        uniform vec2 u_viewport;
@@ -95,7 +95,7 @@ export class FullScreenQuad implements Node {
        void main() {
          vec2 pixelPosCenter = gl_FragCoord.xy - u_viewport * 0.5;
  
-         color = vec4(0.2, 0.5, 0.2, 1.0);
+         color = vec4(0.8, 0.95, 0.8, 1.0);
  
          vec2 mod16X = modI(pixelPosCenter.x, 16.0);
          vec2 mod16Y = modI(pixelPosCenter.y, 16.0);
@@ -104,18 +104,18 @@ export class FullScreenQuad implements Node {
          if (mod16X.y == 0.0 || mod16Y.y == 0.0) {
            if ((mod16X.x == 0.0 && mod16X.y == 0.0) || (mod16Y.x == 0.0 && mod16Y.y == 0.0)) {
              // Axis line
-             color += vec4(0.1, 0.1, 0.1, 0.0);
+             color -= vec4(0.1, 0.1, 0.1, 0.0);
            } else {
-            color += vec4(0.05, 0.05, 0.05, 0.0);
+            color -= vec4(0.05, 0.05, 0.05, 0.0);
            }
          } else if (mod8X.y == 0.0 || mod8Y.y == 0.0) {
-            color += vec4(0.02, 0.02, 0.02, 0.0);
+            color -= vec4(0.02, 0.02, 0.02, 0.0);
          } else {
            // Inner pixel
            vec2 p = (gl_FragCoord.xy/u_viewport.y) * 2.0 - 1.0;
            float n = snoise(p.xy * 256.0);
            n = 0.5 + 0.5 * n;
-           color -= vec4(vec3(n * 0.05), 0.0);
+           color -= vec4(vec3(n * 0.06), 0.0);
          }
        }
       `);
