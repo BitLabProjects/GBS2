@@ -23,12 +23,22 @@ export class Material {
     );
     gl.compileShader(vertexShader);
 
+    const vertexMessage = gl.getShaderInfoLog(vertexShader);
+    if (vertexMessage.length > 0) {
+      console.error("Vertex shader error: " + vertexMessage);
+    }
+
     const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
     gl.shaderSource(
       fragmentShader,
       this.fragmentShaderSource
     );
     gl.compileShader(fragmentShader);
+
+    const fragmentMessage = gl.getShaderInfoLog(fragmentShader);
+    if (fragmentMessage.length > 0) {
+      console.error("Fragment shader error: " + fragmentMessage);
+    }
 
     this.shaderProgram = gl.createProgram();
     gl.attachShader(this.shaderProgram, vertexShader);
