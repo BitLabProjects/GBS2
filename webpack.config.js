@@ -20,10 +20,12 @@ module.exports = {
             filter: async (resourcePath) => {
               return resourcePath.match(/.*(png|jpg)$/);
             },
-            to: ({absoluteFilename}) => {
-              // FILENAME_REGEX is a regex that matches the file you are looking for...
-              let regex = absoluteFilename.match(/^.*\\src\\experiments\\([a-z0-9]+)\\(.+\.(png|jpg))$/);
-              return path.resolve(__dirname, `dist/${regex[1]}/${regex[2]}`);
+            to: ({context, absoluteFilename}) => {
+              // Replace \ with / to handle only the unix paths but be compatible with windows
+              absoluteFilename = absoluteFilename.replaceAll('\\', '\/');
+              let regex = absoluteFilename.match(/^.*\/src\/experiments\/([a-z0-9]+)\/(.+\.(png|jpg))$/);
+              let result = path.resolve(__dirname, `dist/${regex[1]}/${regex[2]}`);
+              return result;
             }
           }
       ]
