@@ -115,7 +115,6 @@ void main() {
 
   onUpdate(time: number, deltaTime: number): void {
     let gl = this.scene.engine.gl;
-    let ext = this.scene.engine.ext;
 
     let updateSpeed = false;
     if (this.timeAccumulator < 0) {
@@ -224,14 +223,14 @@ void main() {
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, this.instanceData, gl.DYNAMIC_DRAW);
-    
-    this.bindBuffers(gl, ext);
+
+    this.bindBuffers(gl);
 
     this.scene.engine.useMaterial(this.material);
-    ext.drawElementsInstancedANGLE(gl.TRIANGLES, ParticleSystem.NUM_INDICES, gl.UNSIGNED_SHORT, 0, ParticleSystem.NUM_PARTICLES);
+    gl.drawElementsInstanced(gl.TRIANGLES, ParticleSystem.NUM_INDICES, gl.UNSIGNED_SHORT, 0, ParticleSystem.NUM_PARTICLES);
   }
 
-  private bindBuffers(gl: WebGLRenderingContext, ext: ANGLE_instanced_arrays) {
+  private bindBuffers(gl: WebGL2RenderingContext) {
     const attrs_per_inst = [
       { name: "a_pos", length: 2, offset: 0 },
       { name: "a_vel", length: 2, offset: 2 },
@@ -245,7 +244,7 @@ void main() {
       const attribLocation = gl.getAttribLocation(this.material.shaderProgram, name);
       gl.vertexAttribPointer(attribLocation, length, gl.FLOAT, false, ParticleSystem.STRIDE_INST * 4, offset * 4);
       gl.enableVertexAttribArray(attribLocation);
-      ext.vertexAttribDivisorANGLE(attribLocation, 1);
+      gl.vertexAttribDivisor(attribLocation, 1);
     }
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);

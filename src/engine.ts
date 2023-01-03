@@ -2,18 +2,13 @@ import { Material } from "./material";
 import { Scene } from "./scene";
 
 export class Engine {
-  public readonly gl: WebGLRenderingContext;
+  public readonly gl: WebGL2RenderingContext;
   public readonly ext: ANGLE_instanced_arrays;
   public scene: Scene;
   private time: number;
 
   constructor(private canvas: HTMLCanvasElement) {
-    this.gl = canvas.getContext("webgl");
-
-    this.ext = this.gl.getExtension('ANGLE_instanced_arrays');
-    if (!this.ext) {
-      console.error("Extension not supported: ANGLE_instanced_arrays");
-    }
+    this.gl = canvas.getContext("webgl2", {antialias: true});
   }
 
   public get width(): number {
