@@ -1,9 +1,12 @@
 import { Material } from './material'
+import { ParticleMaterial } from './materials/particlematerial';
 import { Node } from './node'
 import { Scene } from './scene';
+import { Texture } from './texture';
 
 export class ParticleSystem implements Node {
   material: Material;
+  texture: Texture;
 
   static readonly STRIDE_INST = 4;
   static readonly NUM_PARTICLES = 200;
@@ -16,72 +19,38 @@ export class ParticleSystem implements Node {
 
   private timeAccumulator: number;
 
-  constructor(public readonly scene: Scene) {
+  constructor(public readonly scene: Scene, unitId: number) {
     scene.addNode(this);
-    this.material = new Material(scene.engine, `
-    precision lowp float;
-    
-    attribute vec2 a_position; 
-    attribute vec2 a_pos;
-    attribute vec2 a_vel;
-    
-    // uniforms automatically filled by engine, if present
-    uniform float u_time; 
-    uniform vec2 u_viewport;
-    
-    varying vec3 v_color;
-    
-    void main() {
-      float angle = atan(a_vel.y, a_vel.x);
-      mat3 m = mat3(
-        +cos(angle), +sin(angle),   0.0, //first column
-        -sin(angle), +cos(angle),   0.0,
-            a_pos.x,     a_pos.y,   1.0
-      );
-    
-      vec2 viewport_scale = vec2(1.0 / (u_viewport.x * 0.5), 1.0 / (u_viewport.y * 0.5));
-      vec2 final_pos = (m * vec3(a_position, 1.0)).xy;
-      gl_Position = vec4(final_pos * viewport_scale, 0.0, 1.0);
-      v_color = vec3(1.0, 0.2, 0.2);
-    }
-    `,
-      `
-precision lowp float;
-varying vec3 v_color;
-
-void main() {
-  gl_FragColor = vec4(v_color, 1.0);
-}
-`);
+    this.material = new ParticleMaterial(scene.engine);
+    this.texture = Texture.createFromUrl(scene.engine, `textures/unit${unitId}.png`);
     this.timeAccumulator = -1;
   }
 
   onCreated(): void {
     this.material.maybeCreate();
     let gl = this.scene.engine.gl;
-    let ext = this.scene.engine.ext;
 
-    // Create the arrays of inputs for the vertex shaders
-    const quadVertices = new Float32Array(2 * ParticleSystem.NUM_VERTICES);
+    // Vertices for a rectangle in the [0, 1] range
+    const vertices = new Float32Array(2 * ParticleSystem.NUM_VERTICES);
+    vertices[0 * 2 + 0] = 0.0;
+    vertices[0 * 2 + 1] = 0.0;
+    vertices[1 * 2 + 0] = 0.0;
+    vertices[1 * 2 + 1] = 1.0;
+    vertices[2 * 2 + 0] = 1.0;
+    vertices[2 * 2 + 1] = 1.0;
+    vertices[3 * 2 + 0] = 1.0;
+    vertices[3 * 2 + 1] = 0.0;
+    
+    // Indices for the two triangles composing the rectangle
     const indices = new Uint16Array(ParticleSystem.NUM_INDICES);
-
-    // Arrow Coordinates
-    quadVertices[0 * 2 + 0] = -1.0 * 3;
-    quadVertices[0 * 2 + 1] = +1.0 * 3;
-    quadVertices[1 * 2 + 0] = -0.3 * 3;
-    quadVertices[1 * 2 + 1] = +0.0 * 3;
-    quadVertices[2 * 2 + 0] = -1.0 * 3;
-    quadVertices[2 * 2 + 1] = -1.0 * 3;
-    quadVertices[3 * 2 + 0] = +1.0 * 3;
-    quadVertices[3 * 2 + 1] = +0.0 * 3;
-
     indices[0] = 0;
     indices[1] = 1;
-    indices[2] = 3;
-    indices[3] = 3;
-    indices[4] = 1;
-    indices[5] = 2;
+    indices[2] = 2;
+    indices[3] = 2;
+    indices[4] = 0;
+    indices[5] = 3;
 
+    // Particle instance data
     this.instanceData = new Float32Array(ParticleSystem.NUM_PARTICLES * ParticleSystem.STRIDE_INST);
     for (let i = 0; i < ParticleSystem.NUM_PARTICLES; i++) {
       const instr_ptr = i * ParticleSystem.STRIDE_INST;
@@ -94,19 +63,14 @@ void main() {
       this.instanceData[instr_ptr + 3] = Math.sin(newAngle) * newSpeed;
     }
 
-    // for (let i = gl.getProgramParameter(this.shaderProgram, gl.ACTIVE_ATTRIBUTES) - 1; i >= 0; i--) {
-    //   let name = gl.getActiveAttrib(this.shaderProgram, i).name;
-    //   console.log("Attribute: " + gl.getAttribLocation(this.shaderProgram, name) + " - " + name);
-    // }
-
-    // Pass in the data to the WebGL context
+    // Create buffers to pass data to shaders
     this.instanceBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, this.instanceData, gl.DYNAMIC_DRAW);
 
     this.vertexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, quadVertices, gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
 
     this.elementBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.elementBuffer);
@@ -180,7 +144,7 @@ void main() {
       if (pos_y < -LIM_Y + BORDER_LIM) repvel_y += (BORDER_LIM - (pos_y - -LIM_Y)) * 0.03;
       if (pos_x > +LIM_X - BORDER_LIM) repvel_x -= (BORDER_LIM - (LIM_X - pos_x)) * 0.03;
       if (pos_y > +LIM_Y - BORDER_LIM) repvel_y -= (BORDER_LIM - (LIM_Y - pos_y)) * 0.03;
-      
+
 
       // Steer
       if (avg_count > 0) {
@@ -227,6 +191,7 @@ void main() {
     this.bindBuffers(gl);
 
     this.scene.engine.useMaterial(this.material);
+    this.scene.engine.useTexture(this.texture, "uSampler");
     gl.drawElementsInstanced(gl.TRIANGLES, ParticleSystem.NUM_INDICES, gl.UNSIGNED_SHORT, 0, ParticleSystem.NUM_PARTICLES);
   }
 

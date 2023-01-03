@@ -15,7 +15,6 @@ import { Scene } from "./scene";
 
 const canvas = document.createElement("canvas");
 canvas.id = "spinning-canvas";
-canvas.style.backgroundColor = "#0078D4";
 canvas.style.position = "fixed";
 canvas.style.left = "0px";
 canvas.style.top = "0px";
@@ -30,7 +29,8 @@ engine.init();
 let scene = new Scene(engine);
 
 let fullScrenQuad = new FullScreenQuad(scene);
-let particleSystem = new ParticleSystem(scene);
+let particleSystem1 = new ParticleSystem(scene, 1);
+let particleSystem2 = new ParticleSystem(scene, 2);
 engine.scene = scene;
 
 engine.render();

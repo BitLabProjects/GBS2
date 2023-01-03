@@ -1,5 +1,6 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = {
   entry: './src/index.ts',
@@ -11,6 +12,11 @@ module.exports = {
   plugins: [
     new HtmlWebpackPlugin({
       title: 'Group Behaviour Simulation',
+    }),
+    new CopyWebpackPlugin({
+      patterns: [
+          { from: 'src/textures', to: 'textures' }
+      ]
     }),
   ],
   module: {

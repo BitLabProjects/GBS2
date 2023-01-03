@@ -1,14 +1,15 @@
 import { Material } from "./material";
 import { Scene } from "./scene";
+import { Texture } from "./texture";
 
 export class Engine {
   public readonly gl: WebGL2RenderingContext;
-  public readonly ext: ANGLE_instanced_arrays;
+  private material: Material;
   public scene: Scene;
   private time: number;
 
   constructor(private canvas: HTMLCanvasElement) {
-    this.gl = canvas.getContext("webgl2", {antialias: true});
+    this.gl = canvas.getContext("webgl2", {antialias: false});
   }
 
   public get width(): number {
@@ -79,7 +80,7 @@ export class Engine {
   }
 
   private onUpdate(time: number, deltaTime: number) {
-    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+    //this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 
     for(var x of this.scene.nodes) {
       x.onUpdate(time, deltaTime);
@@ -87,6 +88,7 @@ export class Engine {
   }
 
   public useMaterial(material: Material) {
+    this.material = material;
     material.maybeCreate();
     this.gl.useProgram(material.shaderProgram);
 
@@ -98,5 +100,17 @@ export class Engine {
     if (viewportUniformLocation) {
       this.gl.uniform2f(viewportUniformLocation, this.canvas.width, this.canvas.height);
     }
+  }
+
+  useTexture(texture: Texture, samplerName: string) {
+    // Tell WebGL we want to affect texture unit 0
+    this.gl.activeTexture(this.gl.TEXTURE0);
+
+    // Bind the texture to texture unit 0
+    this.gl.bindTexture(this.gl.TEXTURE_2D, texture.texture);
+
+    // Tell the shader we bound the texture to texture unit 0
+    let samplerLocation = this.gl.getUniformLocation(this.material.shaderProgram, samplerName);
+    this.gl.uniform1i(samplerLocation, 0);
   }
 }
