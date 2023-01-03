@@ -15,7 +15,17 @@ module.exports = {
     }),
     new CopyWebpackPlugin({
       patterns: [
-          { from: 'src/textures', to: 'textures' }
+          { 
+            from: 'src/experiments/*/*', 
+            filter: async (resourcePath) => {
+              return resourcePath.match(/.*(png|jpg)$/);
+            },
+            to: ({absoluteFilename}) => {
+              // FILENAME_REGEX is a regex that matches the file you are looking for...
+              let regex = absoluteFilename.match(/^.*\\src\\experiments\\([a-z0-9]+)\\(.+\.(png|jpg))$/);
+              return path.resolve(__dirname, `dist/${regex[1]}/${regex[2]}`);
+            }
+          }
       ]
     }),
   ],

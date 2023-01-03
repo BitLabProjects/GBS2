@@ -1,8 +1,8 @@
-import { Material } from './material'
-import { ParticleMaterial } from './materials/particlematerial';
-import { Node } from './node'
-import { Scene } from './scene';
-import { Texture } from './texture';
+import { Material } from '../../engine/material'
+import { ParticleMaterial } from './particlematerial';
+import { Node } from '../../engine/node'
+import { Scene } from '../../engine/scene';
+import { Texture } from '../../engine/texture';
 
 export class ParticleSystem implements Node {
   material: Material;
@@ -22,7 +22,7 @@ export class ParticleSystem implements Node {
   constructor(public readonly scene: Scene, unitId: number) {
     scene.addNode(this);
     this.material = new ParticleMaterial(scene.engine);
-    this.texture = Texture.createFromUrl(scene.engine, `textures/unit${unitId}.png`);
+    this.texture = Texture.createFromUrl(scene.engine, `flocking/unit${unitId}.png`);
     this.timeAccumulator = -1;
   }
 

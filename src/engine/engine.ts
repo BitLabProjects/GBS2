@@ -12,6 +12,17 @@ export class Engine {
     this.gl = canvas.getContext("webgl2", {antialias: false});
   }
 
+  static createWithNewCanvas(): Engine {
+    const canvas = document.createElement("canvas");
+    canvas.style.position = "fixed";
+    canvas.style.left = "0px";
+    canvas.style.top = "0px";
+    canvas.width = document.documentElement.clientWidth;
+    canvas.height = document.documentElement.clientHeight;
+    document.body.appendChild(canvas);
+    return new Engine(canvas);
+  }
+
   public get width(): number {
     return this.canvas.width;
   }

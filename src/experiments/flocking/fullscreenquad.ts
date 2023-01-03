@@ -1,6 +1,6 @@
-import { Material } from './material'
-import { Node } from './node'
-import { Scene } from './scene';
+import { Material } from '../../engine/material'
+import { Node } from '../../engine/node'
+import { Scene } from '../../engine/scene';
 
 export class FullScreenQuad implements Node {
   material: Material;

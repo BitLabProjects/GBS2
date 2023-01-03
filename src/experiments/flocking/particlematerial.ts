@@ -1,5 +1,5 @@
-import { Engine } from "../engine";
-import { Material } from "../material";
+import { Engine } from "../../engine/engine";
+import { Material } from "../../engine/material";
 
 export class ParticleMaterial extends Material {
   constructor(public readonly engine: Engine) {
