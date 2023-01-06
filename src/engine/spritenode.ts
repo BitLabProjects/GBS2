@@ -12,10 +12,10 @@ export class SpriteNode implements Node {
   private vertexBuffer: WebGLBuffer;
   private elementBuffer: WebGLBuffer;
 
-  constructor(public readonly scene: Scene, unitId: number) {
+  constructor(public readonly scene: Scene, spriteUrl: string) {
     scene.addNode(this);
     this.material = new SpriteMaterial(scene.engine);
-    this.texture = Texture.createFromUrl(scene.engine, `flocking/unit${unitId}.png`);
+    this.texture = Texture.createFromUrl(scene.engine, spriteUrl);
     this.pos = {x: 0, y: 0};
   }
 
@@ -43,16 +43,17 @@ export class SpriteNode implements Node {
     indices[4] = 0;
     indices[5] = 3;
 
-    this.vertexBuffer = gl.createBuffer();
+    this.vertexBuffer = gl.createBuffer()!;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
 
-    this.elementBuffer = gl.createBuffer();
+    this.elementBuffer = gl.createBuffer()!;
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.elementBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
   }
 
   onUpdate(time: number, deltaTime: number): void {
+    // TODO Batching
     let gl = this.scene.engine.gl;
 
     this.scene.engine.useMaterial(this.material);
@@ -62,11 +63,11 @@ export class SpriteNode implements Node {
   }
 
   private bindBuffers(gl: WebGL2RenderingContext, x: number, y: number) {
-    const posUniformLocation = gl.getUniformLocation(this.material.shaderProgram, "a_pos");
+    const posUniformLocation = gl.getUniformLocation(this.material.maybeCreate(), "a_pos");
     gl.uniform2f(posUniformLocation, x, y);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
-    const posLocation = gl.getAttribLocation(this.material.shaderProgram, "a_position");
+    const posLocation = gl.getAttribLocation(this.material.maybeCreate(), "a_position");
     gl.vertexAttribPointer(posLocation, 2, gl.FLOAT, false, 2 * 4, 0);
     gl.enableVertexAttribArray(posLocation);
 

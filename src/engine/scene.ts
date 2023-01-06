@@ -11,4 +11,12 @@ export class Scene {
   addNode(node: Node) {
     this.nodes.push(node);
   }
+
+  removeNode(node: Node) {
+    const index = this.nodes.indexOf(node);
+    if (index > -1) {
+      this.nodes.splice(index, 1); 
+      // TODO Release resources
+    }
+  }
 }

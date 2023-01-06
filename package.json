@@ -74,6 +74,7 @@
     "to-regex-range": "^5.0.1",
     "update-browserslist-db": "^1.0.10",
     "uri-js": "^4.4.1",
+    "uuid-by-string": "^4.0.0",
     "watchpack": "^2.4.0",
     "webpack-sources": "^3.2.3",
     "yallist": "^4.0.0"

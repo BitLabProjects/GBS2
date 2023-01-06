@@ -2,8 +2,34 @@ import { NetplayInput } from "./types";
 import * as utils from "./utils";
 import { TouchControl } from "./touchcontrols";
 
+enum KeyState {
+  Released = 0,
+  Pressed = 1,
+  JustPressed = 2,
+  JustReleased = 3,
+}
+
 export class DefaultInput extends NetplayInput<DefaultInput> {
-  pressed: { [key: string]: boolean } = {};
+  pressed: { [key: string]: KeyState } = {};
+  isPressed(key: string): boolean {
+    switch (this.pressed[key]) {
+      case KeyState.Pressed:
+      case KeyState.JustPressed:
+        return true;
+
+      default:
+        return false;
+    }
+  }
+  isJustPressed(key: string): boolean {
+    switch (this.pressed[key]) {
+      case KeyState.JustPressed:
+        return true;
+
+      default:
+        return false;
+    }
+  }
 
   mousePosition?: { x: number; y: number };
 
@@ -15,7 +41,7 @@ export class DefaultInput extends NetplayInput<DefaultInput> {
 export class DefaultInputReader {
   canvas: HTMLCanvasElement;
 
-  PRESSED_KEYS: any = {};
+  PRESSED_KEYS: { [key: string]: KeyState } = {};
 
   mousePosition: { x: number; y: number } | null = null;
   mouseDelta: { x: number; y: number } | null = null;
@@ -55,14 +81,14 @@ export class DefaultInputReader {
     document.addEventListener(
       "keydown",
       (event) => {
-        this.PRESSED_KEYS[event.key] = true;
+        this.PRESSED_KEYS[event.key] = KeyState.JustPressed;
       },
       false
     );
     document.addEventListener(
       "keyup",
       (event) => {
-        this.PRESSED_KEYS[event.key] = false;
+        this.PRESSED_KEYS[event.key] = KeyState.JustReleased;
       },
       false
     );
@@ -135,7 +161,24 @@ export class DefaultInputReader {
     let input = new DefaultInput();
 
     for (let key in this.PRESSED_KEYS) {
-      if (this.PRESSED_KEYS[key]) input.pressed[key] = true;
+      switch (this.PRESSED_KEYS[key]) {
+        case KeyState.Released:
+          break;
+
+        case KeyState.Pressed:
+          input.pressed[key] = KeyState.Pressed;
+          break;
+
+        case KeyState.JustPressed:
+          input.pressed[key] = KeyState.JustPressed;
+          this.PRESSED_KEYS[key] = KeyState.Pressed;
+          break;
+
+        case KeyState.JustReleased:
+          input.pressed[key] = KeyState.JustReleased;
+          this.PRESSED_KEYS[key] = KeyState.Released;
+          break;
+      }
     }
     if (this.mousePosition)
       input.mousePosition = utils.clone(this.mousePosition);

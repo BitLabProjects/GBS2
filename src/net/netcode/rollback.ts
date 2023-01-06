@@ -82,7 +82,7 @@ export class RollbackNetcode<
    * Inputs from other players that have already arrived, but have not been
    * applied due to our simulation being behind.
    */
-  future: Map<NetplayPlayer, Array<{ frame: number; input: TInput }>>;
+  futureMap: Map<NetplayPlayer, Array<{ frame: number; input: TInput }>>;
 
   highestFrameReceived: Map<NetplayPlayer, number>;
 
@@ -142,7 +142,7 @@ export class RollbackNetcode<
     // If this input is for a frame that we haven't even simulated, we need to
     // store it in a queue to pull during our next tick.
     if (frame > this.history[this.history.length - 1].frame) {
-      get(this.future, player).push({ frame: frame, input: input });
+      get(this.futureMap, player).push({ frame: frame, input: input });
       return; // Skip rest of logic in this function.
     }
 
@@ -267,10 +267,10 @@ export class RollbackNetcode<
       new RollbackHistory(0, clone(this.state.serialize()), historyInputs),
     ];
 
-    this.future = new Map();
+    this.futureMap = new Map();
     this.highestFrameReceived = new Map();
     for (let player of this.players) {
-      this.future.set(player, []);
+      this.futureMap.set(player, []);
       this.highestFrameReceived.set(player, 0);
     }
   }
@@ -281,7 +281,7 @@ export class RollbackNetcode<
   }
 
   largestFutureSize(): number {
-    return Math.max(...Array.from(this.future.values()).map((a) => a.length));
+    return Math.max(...Array.from(this.futureMap.values()).map((a) => a.length));
   }
 
   // Returns the number of frames for which at least one player's input is predicted.
@@ -323,10 +323,11 @@ export class RollbackNetcode<
         // Broadcast the input to the other players.
         this.broadcastInput(lastState.frame + 1, localInput);
       } else {
-        if (get(this.future, player).length > 0) {
+        let futureArrayForPlayer = get(this.futureMap, player);
+        if (futureArrayForPlayer.length > 0) {
           // If we have already recieved the player's input (due to our)
           // simulation being behind, then use that input.
-          let future = shift(get(this.future, player));
+          let future = shift(futureArrayForPlayer);
           //DEV && assert.equal(lastState.frame + 1, future.frame);
           newInputs.set(player, {
             input: future.input,

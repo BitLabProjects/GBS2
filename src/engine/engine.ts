@@ -5,11 +5,12 @@ import { Texture } from "./texture";
 export class Engine {
   public readonly gl: WebGL2RenderingContext;
   private material: Material;
+  private materialShaderProgram: WebGLShader;
   public scene: Scene;
   private time: number;
 
   constructor(public readonly canvas: HTMLCanvasElement) {
-    this.gl = canvas.getContext("webgl2", {antialias: false});
+    this.gl = canvas.getContext("webgl2", {antialias: false})!;
   }
 
   static createWithNewCanvas(): Engine {
@@ -100,14 +101,14 @@ export class Engine {
 
   public useMaterial(material: Material) {
     this.material = material;
-    material.maybeCreate();
-    this.gl.useProgram(material.shaderProgram);
+    this.materialShaderProgram = material.maybeCreate();
+    this.gl.useProgram(this.materialShaderProgram);
 
-    const timeUniformLocation = this.gl.getUniformLocation(material.shaderProgram, "u_time");
+    const timeUniformLocation = this.gl.getUniformLocation(this.materialShaderProgram, "u_time");
     if (timeUniformLocation) {
       this.gl.uniform1f(timeUniformLocation, this.time);
     }
-    const viewportUniformLocation = this.gl.getUniformLocation(material.shaderProgram, "u_viewport");
+    const viewportUniformLocation = this.gl.getUniformLocation(this.materialShaderProgram, "u_viewport");
     if (viewportUniformLocation) {
       this.gl.uniform2f(viewportUniformLocation, this.canvas.width, this.canvas.height);
     }
@@ -121,7 +122,7 @@ export class Engine {
     this.gl.bindTexture(this.gl.TEXTURE_2D, texture.texture);
 
     // Tell the shader we bound the texture to texture unit 0
-    let samplerLocation = this.gl.getUniformLocation(this.material.shaderProgram, samplerName);
+    let samplerLocation = this.gl.getUniformLocation(this.material.maybeCreate(), samplerName);
     this.gl.uniform1i(samplerLocation, 0);
   }
 }

@@ -7,7 +7,7 @@ export class Texture {
   static createFromUrl(engine: Engine, url: string) {
     let gl = engine.gl;
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    const texture = gl.createTexture();
+    const texture = gl.createTexture()!;
     gl.bindTexture(gl.TEXTURE_2D, texture);
   
     // Because images have to be downloaded over the internet

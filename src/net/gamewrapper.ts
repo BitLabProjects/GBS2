@@ -7,6 +7,7 @@ import * as Peer from "peerjs";
 
 import * as QRCode from "qrcode";
 import * as queryString from "query-string";
+import * as getUuidByString from 'uuid-by-string'
 
 export abstract class GameWrapper {
   game: Game;
@@ -20,7 +21,7 @@ export abstract class GameWrapper {
   inputReader: DefaultInputReader;
 
   constructor(game: Game,
-              canvas: HTMLCanvasElement) {
+    canvas: HTMLCanvasElement) {
     this.game = game;
 
     // Create stats UI
@@ -40,15 +41,15 @@ export abstract class GameWrapper {
     this.menu.style.position = "absolute";
     this.menu.style.backgroundColor = "white";
     this.menu.style.padding = "5px";
-    this.menu.style.left = "50%";
-    this.menu.style.top = "50%";
+    this.menu.style.left = "0%";
+    this.menu.style.bottom = "0%";
     this.menu.style.boxShadow = "0px 0px 10px black";
-    this.menu.style.transform = "translate(-50%, -50%)";
+    this.menu.style.transform = "translate(0%, 0%)";
 
     document.body.appendChild(this.menu);
 
     if (
-      this.game.touchControls && 
+      this.game.touchControls &&
       window.navigator.userAgent.toLowerCase().includes("mobile")
     ) {
       for (let [_, control] of Object.entries(
@@ -67,26 +68,34 @@ export abstract class GameWrapper {
 
   peer?: Peer.Peer;
 
-  start() {
+  start(roomName: string, isClient: boolean) {
     log.info("Creating a PeerJS instance.");
-    this.menu.innerHTML = "Connecting to PeerJS...";
+    this.menu.innerHTML = "Waiting players...";
 
-    this.peer = new Peer.Peer();
+    let roomUUID = getUuidByString(roomName);
+
+    this.peer = isClient ? new Peer.Peer() : new Peer.Peer(roomUUID);
     this.peer.on("error", (err: any) => console.error(err));
+
+    window.onbeforeunload = () => {
+      console.log("Disconnecting...");
+      this.peer?.disconnect();
+      console.log("Disconnected");
+    };
 
     this.peer!.on("open", (id: any) => {
       // Try to parse the room from the hash. If we find one,
       // we are a client.
-      const parsedHash = queryString.default.parse(window.location.hash);
-      const isClient = !!parsedHash.room;
+      //const parsedHash = queryString.default.parse(window.location.hash);
+      //const isClient = !!parsedHash.room;
 
       if (isClient) {
         // We are a client, so connect to the room from the hash.
         this.menu.style.display = "none";
 
-        log.info(`Connecting to room ${parsedHash.room}.`);
+        log.info(`Connecting to room ${roomName}.`);
 
-        const conn = this.peer!.connect(parsedHash.room as string, {
+        const conn = this.peer!.connect(roomUUID as string, {
           serialization: "json",
           reliable: true,
           // @ts-ignore
@@ -110,7 +119,7 @@ export abstract class GameWrapper {
         // We are host, so we need to show a join link.
         log.info("Showing join link.");
 
-        // Show the join link.
+        /*
         let joinURL = `${window.location.href}#room=${id}`;
         this.menu.innerHTML = `<div>Join URL (Open in a new window or send to a friend): <a href="${joinURL}">${joinURL}<div>`;
 
@@ -118,6 +127,7 @@ export abstract class GameWrapper {
         const qrCanvas = document.createElement("canvas");
         this.menu.appendChild(qrCanvas);
         QRCode.toCanvas(qrCanvas, joinURL);
+        */
 
         // Construct the players array.
         const players: Array<NetplayPlayer> = [

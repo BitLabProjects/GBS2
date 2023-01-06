@@ -72,9 +72,9 @@ export class RollbackWrapper extends GameWrapper {
       setInterval(() => {
         conn.send({ type: "ping-req", sent_time: Date.now() });
       }, PING_INTERVAL);
-
-      this.startGameLoop();
     });
+
+    this.startGameLoop();
   }
 
   startClient(players: Array<NetplayPlayer>, conn: Peer.DataConnection) {

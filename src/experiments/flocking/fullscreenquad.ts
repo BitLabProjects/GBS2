@@ -146,14 +146,14 @@ export class FullScreenQuad implements Node {
     indices[4] = 0;
     indices[5] = 3;
 
-    this.vertexBuffer = gl.createBuffer();
+    this.vertexBuffer = gl.createBuffer()!;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, quadVertices, gl.STATIC_DRAW);
-    const posLocation = gl.getAttribLocation(this.material.shaderProgram, "a_position");
+    const posLocation = gl.getAttribLocation(this.material.maybeCreate(), "a_position");
     gl.vertexAttribPointer(posLocation, 2, gl.FLOAT, false, 2 * 4, 0);
     gl.enableVertexAttribArray(posLocation);
 
-    this.elementBuffer = gl.createBuffer();
+    this.elementBuffer = gl.createBuffer()!;
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.elementBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
   }
@@ -169,7 +169,7 @@ export class FullScreenQuad implements Node {
 
   private bindBuffers(gl: WebGL2RenderingContext) {
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
-    const posLocation = gl.getAttribLocation(this.material.shaderProgram, "a_position");
+    const posLocation = gl.getAttribLocation(this.material.maybeCreate(), "a_position");
     gl.vertexAttribPointer(posLocation, 2, gl.FLOAT, false, 2 * 4, 0);
     gl.enableVertexAttribArray(posLocation);
     gl.vertexAttribDivisor(posLocation, 0);

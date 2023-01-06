@@ -9,35 +9,63 @@ import { NetplayPlayer, SerializedState } from "../../net/types";
 import { clone } from "../../net/utils";
 import { FullScreenQuad } from "../flocking/fullscreenquad";
 
-export class WebRTCScene extends Scene {
-  constructor(engine: Engine) {
+export class WebRTCSceneHost extends Scene {
+  constructor(engine: Engine, roomName: string) {
     super(engine);
 
     new FullScreenQuad(this);
 
-    new RollbackWrapper(new SimpleGame(this), engine.canvas).start();
+    new RollbackWrapper(new SimpleGame(this), engine.canvas).start(roomName, false);
   }
+}
+
+export class WebRTCScene extends Scene {
+  constructor(engine: Engine, roomName: string) {
+    super(engine);
+
+    new FullScreenQuad(this);
+
+    new RollbackWrapper(new SimpleGame(this), engine.canvas).start(roomName, true);
+  }
+}
+
+class GameState {
+  units: UnitState[];
+  projectiles: ProjectileState[];
+
+  constructor() {
+    this.units = [];
+    this.projectiles = [];
+  }
+}
+
+class UnitState {
+  constructor(public x: number, public y: number) { }
+}
+class ProjectileState {
+  constructor(public x: number, public y: number, 
+              public xVel: number, public yVel: number,
+              public life: number) { }
 }
 
 class SimpleGame extends Game {
   public static timestep = 1000 / 60; // Our game runs at 60 FPS;
 
-  private playerA_sprite: SpriteNode;
-  private playerB_sprite: SpriteNode;
+  private unitSprites: SpriteNode[];
+  private projectileSprites: SpriteNode[];
 
-  private state: { playerA: { x: number, y: number }, playerB: { x: number, y: number } };
+  private state: GameState;
 
   private virtualJoystick: VirtualJoystick;
   touchControls: { [name: string]: TouchControl };
 
   constructor(private scene: Scene) {
     super();
-    this.state = { playerA: { x: -100, y: 0 }, playerB: { x: +100, y: 0 } };
-
-    this.playerA_sprite = new SpriteNode(this.scene, 1);
-    this.playerB_sprite = new SpriteNode(this.scene, 2);
-    this.playerA_sprite.onCreated();
-    this.playerB_sprite.onCreated();
+    this.state = new GameState();
+    this.state.units.push(new UnitState(-150, 0));
+    this.state.units.push(new UnitState(+150, 0));
+    this.unitSprites = [];
+    this.projectileSprites = [];
 
     this.draw();
 
@@ -67,38 +95,74 @@ class SimpleGame extends Game {
       // Generate player velocity from input keys.
       const vel = {
         x:
-          (input.pressed.ArrowLeft ? -1 : 0) +
-          (input.pressed.ArrowRight ? 1 : 0) + 
-          (input.touchControls['joystick'].x),
+          (input.isPressed("ArrowLeft") ? -1 : 0) +
+          (input.isPressed("ArrowRight") ? 1 : 0) +
+          (input.touchControls!.joystick.x),
         y:
-          (input.pressed.ArrowDown ? -1 : 0) +
-          (input.pressed.ArrowUp ? 1 : 0) +
-          (input.touchControls['joystick'].y),
+          (input.isPressed("ArrowDown") ? -1 : 0) +
+          (input.isPressed("ArrowUp") ? 1 : 0) +
+          (input.touchControls!.joystick.y),
       };
 
       // Apply the velocity to the appropriate player.
-      if (player.getID() == 0) {
-        this.state.playerA.x += vel.x * 0.5;
-        this.state.playerA.y += vel.y * 0.5;
-      } else if (player.getID() == 1) {
-        this.state.playerB.x += vel.x * 0.5;
-        this.state.playerB.y += vel.y * 0.5;
+      let unitState = this.state.units[player.getID()];
+      unitState.x += vel.x * 0.5;
+      unitState.y += vel.y * 0.5;
+
+      if (input.isJustPressed(" ")) {
+        // Fire
+        this.state.projectiles.push(new ProjectileState(unitState.x + 10, unitState.y, 60, 0, 60 * 3));
+      }
+    }
+
+    let deltaTime = 1 / 60; //TODO 
+    for (let [i, projectile] of this.state.projectiles.entries()) {
+      projectile.x += projectile.xVel * deltaTime;
+      projectile.y += projectile.yVel * deltaTime;
+      projectile.life -= 1;
+      
+      if (projectile.life <= 0) {
+        this.state.projectiles.splice(i, 1);
+      } else { 
+        // TODO Collide projectile with units
       }
     }
   }
 
-  // Normally, we have to implement a serialize / deserialize function
-  // for our state. However, there is an autoserializer that can handle
-  // simple states for us. We don't need to do anything here!
-  // serialize() {}
-  // deserialize(value) {}
-
   // Draw the state of our game onto a canvas.
   draw() {
-    // Initialize our player positions.
-    this.playerA_sprite.pos.x = this.state.playerA.x;
-    this.playerA_sprite.pos.y = this.state.playerA.y;
-    this.playerB_sprite.pos.x = this.state.playerB.x;
-    this.playerB_sprite.pos.y = this.state.playerB.y;
+    for (let [i, unit] of this.state.units.entries()) {
+      let spriteNode: SpriteNode;
+      if (this.unitSprites.length <= i) {
+        spriteNode = new SpriteNode(this.scene, `flocking/unit${i+1}.png`);
+        this.unitSprites.push(spriteNode);
+        spriteNode.onCreated();
+      } else {
+        spriteNode = this.unitSprites[i];
+      }
+
+      spriteNode.pos.x = unit.x;
+      spriteNode.pos.y = unit.y;
+    }
+
+    // TODO Extract sync logic and unify with units above
+    for (let [i, projectile] of this.state.projectiles.entries()) {
+      let spriteNode: SpriteNode;
+      if (this.projectileSprites.length <= i) {
+        spriteNode = new SpriteNode(this.scene, `webrtc/bullet1.png`);
+        this.projectileSprites.push(spriteNode);
+        spriteNode.onCreated();
+      } else {
+        spriteNode = this.projectileSprites[i];
+      }
+      spriteNode.pos.x = projectile.x;
+      spriteNode.pos.y = projectile.y;
+    }
+
+    // Remove leftover sprites from projectileSprites and scene
+    let leftoverSprites = this.projectileSprites.splice(this.state.projectiles.length);
+    for(let projectile of leftoverSprites) {
+      this.scene.removeNode(projectile);
+    }
   }
 }

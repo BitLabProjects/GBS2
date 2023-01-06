@@ -64,15 +64,15 @@ export class ParticleSystem implements Node {
     }
 
     // Create buffers to pass data to shaders
-    this.instanceBuffer = gl.createBuffer();
+    this.instanceBuffer = gl.createBuffer()!;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, this.instanceData, gl.DYNAMIC_DRAW);
 
-    this.vertexBuffer = gl.createBuffer();
+    this.vertexBuffer = gl.createBuffer()!;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
 
-    this.elementBuffer = gl.createBuffer();
+    this.elementBuffer = gl.createBuffer()!;
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.elementBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
   }
@@ -206,14 +206,14 @@ export class ParticleSystem implements Node {
       const name = attrs_per_inst[i].name;
       const length = attrs_per_inst[i].length;
       const offset = attrs_per_inst[i].offset;
-      const attribLocation = gl.getAttribLocation(this.material.shaderProgram, name);
+      const attribLocation = gl.getAttribLocation(this.material.maybeCreate(), name);
       gl.vertexAttribPointer(attribLocation, length, gl.FLOAT, false, ParticleSystem.STRIDE_INST * 4, offset * 4);
       gl.enableVertexAttribArray(attribLocation);
       gl.vertexAttribDivisor(attribLocation, 1);
     }
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
-    const posLocation = gl.getAttribLocation(this.material.shaderProgram, "a_position");
+    const posLocation = gl.getAttribLocation(this.material.maybeCreate(), "a_position");
     gl.vertexAttribPointer(posLocation, 2, gl.FLOAT, false, 2 * 4, 0);
     gl.enableVertexAttribArray(posLocation);
 
