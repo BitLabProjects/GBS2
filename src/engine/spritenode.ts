@@ -6,6 +6,7 @@ import { Texture } from "./texture";
 
 export class SpriteNode implements Node {
   pos: {x: number, y: number};
+  color: {r: number, g: number, b: number};
   material: Material;
   texture: Texture;
 
@@ -17,6 +18,7 @@ export class SpriteNode implements Node {
     this.material = new SpriteMaterial(scene.engine);
     this.texture = Texture.createFromUrl(scene.engine, spriteUrl);
     this.pos = {x: 0, y: 0};
+    this.color = {r: 1, g: 1, b: 1};
   }
 
   onCreated(): void {
@@ -58,13 +60,15 @@ export class SpriteNode implements Node {
 
     this.scene.engine.useMaterial(this.material);
     this.scene.engine.useTexture(this.texture, "uSampler");
-    this.bindBuffers(gl, this.pos.x, this.pos.y);
+    this.bindBuffers(gl, this.pos.x, this.pos.y, this.color.r, this.color.g, this.color.b);
     gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
   }
 
-  private bindBuffers(gl: WebGL2RenderingContext, x: number, y: number) {
+  private bindBuffers(gl: WebGL2RenderingContext, x: number, y: number, r: number, g: number, b: number) {
     const posUniformLocation = gl.getUniformLocation(this.material.maybeCreate(), "a_pos");
     gl.uniform2f(posUniformLocation, x, y);
+    const colorUniformLocation = gl.getUniformLocation(this.material.maybeCreate(), "a_color");
+    gl.uniform3f(colorUniformLocation, r, g, b);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
     const posLocation = gl.getAttribLocation(this.material.maybeCreate(), "a_position");
@@ -130,12 +134,13 @@ export class SpriteMaterial extends Material {
        precision lowp float;
 
        in vec2 v_uv;
+       uniform vec3 a_color;
        out vec4 color;
 
        uniform sampler2D uSampler;
 
        void main() {
-         color = texture(uSampler, v_uv);
+         color = texture(uSampler, v_uv) * vec4(a_color, 1);
        }
       `);
   }

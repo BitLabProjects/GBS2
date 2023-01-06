@@ -40,7 +40,8 @@ class GameState {
 }
 
 class UnitState {
-  constructor(public x: number, public y: number) { }
+  constructor(public x: number, public y: number,
+              public xKnock: number, public yKnock: number) { }
 }
 class ProjectileState {
   constructor(public x: number, public y: number, 
@@ -62,8 +63,8 @@ class SimpleGame extends Game {
   constructor(private scene: Scene) {
     super();
     this.state = new GameState();
-    this.state.units.push(new UnitState(-150, 0));
-    this.state.units.push(new UnitState(+150, 0));
+    this.state.units.push(new UnitState(-150, 0, 0, 0));
+    this.state.units.push(new UnitState(+150, 0, 0, 0));
     this.unitSprites = [];
     this.projectileSprites = [];
 
@@ -91,6 +92,8 @@ class SimpleGame extends Game {
   // simulates the game forward. Think of it like making
   // a local multiplayer game with multiple controllers.
   tick(playerInputs: Map<NetplayPlayer, DefaultInput>) {
+    let deltaTime = 1 / 60; //TODO
+
     for (const [player, input] of playerInputs.entries()) {
       // Generate player velocity from input keys.
       const vel = {
@@ -106,8 +109,11 @@ class SimpleGame extends Game {
 
       // Apply the velocity to the appropriate player.
       let unitState = this.state.units[player.getID()];
-      unitState.x += vel.x * 0.5;
-      unitState.y += vel.y * 0.5;
+      unitState.x += (vel.x * 30 + unitState.xKnock) * deltaTime;
+      unitState.y += (vel.y * 30 + unitState.yKnock) * deltaTime;
+
+      unitState.xKnock *= 0.85;
+      unitState.yKnock *= 0.85;
 
       if (input.isJustPressed(" ")) {
         // Fire
@@ -115,16 +121,22 @@ class SimpleGame extends Game {
       }
     }
 
-    let deltaTime = 1 / 60; //TODO 
     for (let [i, projectile] of this.state.projectiles.entries()) {
       projectile.x += projectile.xVel * deltaTime;
       projectile.y += projectile.yVel * deltaTime;
       projectile.life -= 1;
       
+      for(let unit of this.state.units) {
+        let dx = projectile.x - unit.x;
+        let dy = projectile.y - unit.y;
+        if (dx * dx + dy * dy < 5 * 5) {
+          projectile.life = 0;
+          unit.xKnock = 50;
+        }
+      }
+
       if (projectile.life <= 0) {
         this.state.projectiles.splice(i, 1);
-      } else { 
-        // TODO Collide projectile with units
       }
     }
   }
@@ -140,6 +152,12 @@ class SimpleGame extends Game {
       } else {
         spriteNode = this.unitSprites[i];
       }
+
+      // animate sprite color based on knock strength
+      let knockLen = Math.sqrt(unit.xKnock * unit.xKnock + unit.yKnock * unit.yKnock);
+      let redQ = knockLen / 50;
+      spriteNode.color.g = 1 - redQ;
+      spriteNode.color.b = 1 - redQ;      
 
       spriteNode.pos.x = unit.x;
       spriteNode.pos.y = unit.y;
