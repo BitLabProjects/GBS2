@@ -2,7 +2,8 @@ import * as log from "loglevel";
 
 const DEV: boolean = process.env.NODE_ENV === "development";
 if (DEV) {
-  log.enableAll();
+  // log.enableAll();
+  log.disableAll();
 }
 
 export function get<K, V>(map: Map<K, V>, key: K): V {

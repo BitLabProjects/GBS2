@@ -7,7 +7,7 @@ export class VirtualJoystick extends TouchControl {
   base: HTMLDivElement;
   nub: HTMLDivElement;
 
-  constructor() {
+  constructor(private right: boolean = false) {
     super();
 
     this.base = document.createElement("div");
@@ -17,7 +17,11 @@ export class VirtualJoystick extends TouchControl {
     this.base.style.zIndex = "3";
     this.base.style.borderRadius = "50%";
     this.base.style.position = "absolute";
-    this.base.style.left = "10px";
+    if (right) {
+      this.base.style.right = "10px";
+    } else {
+      this.base.style.left = "10px";
+    }
     this.base.style.bottom = "10px";
     this.base.style.display = "none";
 
@@ -62,6 +66,7 @@ export class VirtualJoystick extends TouchControl {
   updateTouch(touch?: Touch) {
     let rect = this.base.getBoundingClientRect();
 
+    let nubLeftRight: number;
     if (touch) {
       let pos = {
         x: 2 * ((touch.clientX - rect.left) / rect.width - 0.5),
@@ -76,12 +81,17 @@ export class VirtualJoystick extends TouchControl {
 
       this.value = { x: pos.x, y: -pos.y };
 
-      this.nub.style.left = `${(pos.x / 2 + 0.5) * rect.width + rect.left}px`;
+      nubLeftRight = (pos.x / 2 + 0.5) * rect.width + rect.left;
       this.nub.style.top = `${(pos.y / 2 + 0.5) * rect.height + rect.top}px`;
     } else {
-      this.nub.style.left = `${0.5 * rect.width + rect.left}px`;
+      nubLeftRight = 0.5 * rect.width + rect.left;
       this.nub.style.top = `${0.5 * rect.height + rect.top}px`;
       this.value = { x: 0, y: 0 };
+    }
+    if (this.right) {
+      this.nub.style.left = `${nubLeftRight}px`;
+    } else {
+      this.nub.style.left = `${nubLeftRight}px`;
     }
   }
 

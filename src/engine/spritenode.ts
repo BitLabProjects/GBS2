@@ -6,7 +6,8 @@ import { Texture } from "./texture";
 
 export class SpriteNode implements Node {
   pos: {x: number, y: number};
-  color: {r: number, g: number, b: number};
+  angle: number;
+  color: {r: number, g: number, b: number, a: number};
   material: Material;
   texture: Texture;
 
@@ -18,7 +19,8 @@ export class SpriteNode implements Node {
     this.material = new SpriteMaterial(scene.engine);
     this.texture = Texture.createFromUrl(scene.engine, spriteUrl);
     this.pos = {x: 0, y: 0};
-    this.color = {r: 1, g: 1, b: 1};
+    this.angle = 0;
+    this.color = {r: 1, g: 1, b: 1, a: 1};
   }
 
   onCreated(): void {
@@ -60,15 +62,17 @@ export class SpriteNode implements Node {
 
     this.scene.engine.useMaterial(this.material);
     this.scene.engine.useTexture(this.texture, "uSampler");
-    this.bindBuffers(gl, this.pos.x, this.pos.y, this.color.r, this.color.g, this.color.b);
+    this.bindBuffers(gl, this.pos.x, this.pos.y, this.angle, this.color.r, this.color.g, this.color.b, this.color.a);
     gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
   }
 
-  private bindBuffers(gl: WebGL2RenderingContext, x: number, y: number, r: number, g: number, b: number) {
+  private bindBuffers(gl: WebGL2RenderingContext, x: number, y: number, angle: number, r: number, g: number, b: number, a: number) {
     const posUniformLocation = gl.getUniformLocation(this.material.maybeCreate(), "a_pos");
     gl.uniform2f(posUniformLocation, x, y);
+    const angleUniformLocation = gl.getUniformLocation(this.material.maybeCreate(), "a_angle");
+    gl.uniform1f(angleUniformLocation, angle);
     const colorUniformLocation = gl.getUniformLocation(this.material.maybeCreate(), "a_color");
-    gl.uniform3f(colorUniformLocation, r, g, b);
+    gl.uniform4f(colorUniformLocation, r, g, b, a);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
     const posLocation = gl.getAttribLocation(this.material.maybeCreate(), "a_position");
@@ -86,6 +90,7 @@ export class SpriteMaterial extends Material {
        precision lowp float;
        
        in vec2 a_position; 
+       uniform float a_angle;
        uniform vec2 a_pos;
        
        // uniforms automatically filled by engine, if present
@@ -96,11 +101,10 @@ export class SpriteMaterial extends Material {
        uniform sampler2D uSampler;
        
        void main() {
-         float angle = 0.0;
          mat3 LcsToWcsMatrix = mat3(
-           +cos(angle), +sin(angle),   0.0, //first column
-           -sin(angle), +cos(angle),   0.0,
-               a_pos.x,     a_pos.y,   1.0
+           +cos(a_angle), +sin(a_angle),   0.0, //first column
+           -sin(a_angle), +cos(a_angle),   0.0,
+                 a_pos.x,       a_pos.y,   1.0
          );
    
          // Scale position from [0, 1] to [0, sprite_width] and [0, sprite_height]
@@ -119,7 +123,7 @@ export class SpriteMaterial extends Material {
          vec2 pos_Vcs = pos_Wcs;
    
          // Round to integer pixel
-         pos_Vcs = floor(pos_Vcs);
+         //pos_Vcs = floor(pos_Vcs);
    
          // Scale to homogeneous coordinates in the [-1, +1] range
          vec2 viewport_scale = vec2(1.0 / (u_viewport.x * 0.5), 1.0 / (u_viewport.y * 0.5));
@@ -134,13 +138,13 @@ export class SpriteMaterial extends Material {
        precision lowp float;
 
        in vec2 v_uv;
-       uniform vec3 a_color;
+       uniform vec4 a_color;
        out vec4 color;
 
        uniform sampler2D uSampler;
 
        void main() {
-         color = texture(uSampler, v_uv) * vec4(a_color, 1);
+         color = texture(uSampler, v_uv) * a_color;
        }
       `);
   }
