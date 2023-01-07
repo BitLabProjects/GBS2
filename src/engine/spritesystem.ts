@@ -1,31 +1,19 @@
-import { Engine } from "./engine";
+import { Engine, EngineSystemForComp } from "./engine";
 import { Material } from "./material";
-import { Node } from "./node";
-import { Scene } from "./scene";
-import { Texture } from "./texture";
+import { SpriteComp } from "./spritecomp";
 
-export class SpriteNode implements Node {
-  pos: {x: number, y: number};
-  angle: number;
-  color: {r: number, g: number, b: number, a: number};
-  material: Material;
-  texture: Texture;
-
+export class SpriteSystem extends EngineSystemForComp {
+  constructor(engine: Engine) {
+    super(engine, SpriteComp);
+    this.material = new SpriteMaterial(engine);
+  }
+  
+  private material: Material;
   private vertexBuffer: WebGLBuffer;
   private elementBuffer: WebGLBuffer;
 
-  constructor(public readonly scene: Scene, spriteUrl: string) {
-    scene.addNode(this);
-    this.material = new SpriteMaterial(scene.engine);
-    this.texture = Texture.createFromUrl(scene.engine, spriteUrl);
-    this.pos = {x: 0, y: 0};
-    this.angle = 0;
-    this.color = {r: 1, g: 1, b: 1, a: 1};
-  }
-
   onCreated(): void {
-    this.material.maybeCreate();
-    let gl = this.scene.engine.gl;
+    let gl = this.engine.gl;
 
     // Vertices for a rectangle in the [0, 1] range
     const vertices = new Float32Array(2 * 4);
@@ -56,26 +44,32 @@ export class SpriteNode implements Node {
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
   }
 
-  onUpdate(time: number, deltaTime: number): void {
+  onUpdate(deltaTime: number): void {
+    let gl = this.engine.gl;
+    // TODO Group by texture
     // TODO Batching
-    let gl = this.scene.engine.gl;
-
-    this.scene.engine.useMaterial(this.material);
-    this.scene.engine.useTexture(this.texture, "uSampler");
-    this.bindBuffers(gl, this.pos.x, this.pos.y, this.angle, this.color.r, this.color.g, this.color.b, this.color.a);
-    gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+    for(let comp of this.components) {
+      let spriteComp = comp as SpriteComp;
+    
+      this.engine.useMaterial(this.material);
+      this.engine.useTexture(spriteComp.texture, "uSampler");
+      this.bindBuffers(gl, spriteComp.pos.x, spriteComp.pos.y, spriteComp.angle, 
+                           spriteComp.color.r, spriteComp.color.g, spriteComp.color.b, spriteComp.color.a);
+      gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+    }
   }
 
   private bindBuffers(gl: WebGL2RenderingContext, x: number, y: number, angle: number, r: number, g: number, b: number, a: number) {
-    const posUniformLocation = gl.getUniformLocation(this.material.maybeCreate(), "a_pos");
+    let shaderProgram = this.material.maybeCreate();
+    const posUniformLocation = gl.getUniformLocation(shaderProgram, "a_pos");
     gl.uniform2f(posUniformLocation, x, y);
-    const angleUniformLocation = gl.getUniformLocation(this.material.maybeCreate(), "a_angle");
+    const angleUniformLocation = gl.getUniformLocation(shaderProgram, "a_angle");
     gl.uniform1f(angleUniformLocation, angle);
-    const colorUniformLocation = gl.getUniformLocation(this.material.maybeCreate(), "a_color");
+    const colorUniformLocation = gl.getUniformLocation(shaderProgram, "a_color");
     gl.uniform4f(colorUniformLocation, r, g, b, a);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
-    const posLocation = gl.getAttribLocation(this.material.maybeCreate(), "a_position");
+    const posLocation = gl.getAttribLocation(shaderProgram, "a_position");
     gl.vertexAttribPointer(posLocation, 2, gl.FLOAT, false, 2 * 4, 0);
     gl.enableVertexAttribArray(posLocation);
 

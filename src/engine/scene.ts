@@ -16,7 +16,10 @@ export class Scene {
     const index = this.nodes.indexOf(node);
     if (index > -1) {
       this.nodes.splice(index, 1); 
-      // TODO Release resources
+      this.engine.addRemovedNode(node);
     }
+  }
+
+  onUpdate(deltaTime: number) {
   }
 }

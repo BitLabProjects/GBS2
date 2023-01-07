@@ -1,16 +1,29 @@
 import { Material } from "./material";
+import { Node, Component } from "./node";
 import { Scene } from "./scene";
+import { SpriteSystem } from "./spritesystem";
 import { Texture } from "./texture";
 
 export class Engine {
   public readonly gl: WebGL2RenderingContext;
   private material: Material;
   private materialShaderProgram: WebGLShader;
+
+  private systems: EngineSystem[];
+  private changedNodes: Node[];
+  private removedNodes: Node[];
+
   public scene: Scene;
+  private lastNodeID: number;
+
   private time: number;
 
   constructor(public readonly canvas: HTMLCanvasElement) {
     this.gl = canvas.getContext("webgl2", {antialias: false})!;
+    this.lastNodeID = 0;
+    this.systems = [];
+    this.changedNodes = [];
+    this.removedNodes = [];
   }
 
   static createWithNewCanvas(): Engine {
@@ -18,10 +31,21 @@ export class Engine {
     canvas.style.position = "fixed";
     canvas.style.left = "0px";
     canvas.style.top = "0px";
-    canvas.width = document.documentElement.clientWidth;
-    canvas.height = document.documentElement.clientHeight;
+    let setCanvasSizeFromWindow = (canvas: HTMLCanvasElement) => {
+      canvas.width = document.documentElement.clientWidth;
+      canvas.height = document.documentElement.clientHeight;
+    }
+    setCanvasSizeFromWindow(canvas);
     document.body.appendChild(canvas);
-    return new Engine(canvas);
+
+    let engine = new Engine(canvas);
+    // Attach the resize event here: a direct caller to Engine constructor might want to do differently
+    window.onresize = (ev: UIEvent) => {
+      setCanvasSizeFromWindow(canvas);
+      engine.onResize();
+    };
+
+    return engine;
   }
 
   public get width(): number {
@@ -29,6 +53,15 @@ export class Engine {
   }
   public get height(): number {
     return this.canvas.height;
+  }
+
+  public genNodeID(): number {
+    this.lastNodeID += 1;
+    return this.lastNodeID;
+  }
+
+  addSystem(system: EngineSystem) {
+    this.systems.push(system);
   }
 
   public init() {
@@ -40,13 +73,23 @@ export class Engine {
     this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
 
     // Set the WebGL context to be the full size of the canvas
+    this.onResize();
+  }
+  
+  public onResize() {
     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
   }
 
   public render() {
-    for(var x of this.scene.nodes) {
-      x.onCreated();
+    for(let system of this.systems) {
+      system.onCreated();
     }
+
+    // for(let node of this.scene.nodes) {
+    //   for(let system of this.systems) {
+    //     system.onNodeAddedOrModified(node);
+    //   }
+    // }
 
     let dateOrPerformance = (window.performance || Date);
 
@@ -81,7 +124,7 @@ export class Engine {
         if (deltaTime > 0) {
           this.time += deltaTime;
           for(let i=0; i<repCount; i++) {
-            this.onUpdate(this.time, deltaTime);
+            this.onUpdate(deltaTime);
           }
         }
       }
@@ -91,11 +134,33 @@ export class Engine {
     onAnimationFrame();
   }
 
-  private onUpdate(time: number, deltaTime: number) {
-    //this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+  public addChangedNode(node: Node) {
+    this.changedNodes.push(node);
+  }
+  public addRemovedNode(node: Node) {
+    this.removedNodes.push(node);
+  }
 
-    for(var x of this.scene.nodes) {
-      x.onUpdate(time, deltaTime);
+  private onUpdate(deltaTime: number) {
+    //this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+    this.scene.onUpdate(deltaTime);
+
+    for(let node of this.removedNodes) {
+      for(let system of this.systems) {
+        system.onNodeRemoved(node);
+      }
+    }
+    this.removedNodes.length = 0;
+
+    for(let node of this.changedNodes) {
+      for(let system of this.systems) {
+        system.onNodeAddedOrModified(node);
+      }
+    }
+    this.changedNodes.length = 0;
+
+    for(let system of this.systems) {
+      system.onUpdate(deltaTime);
     }
   }
 
@@ -124,5 +189,70 @@ export class Engine {
     // Tell the shader we bound the texture to texture unit 0
     let samplerLocation = this.gl.getUniformLocation(this.material.maybeCreate(), samplerName);
     this.gl.uniform1i(samplerLocation, 0);
+  }
+}
+
+export abstract class EngineSystem {
+  abstract onCreated(): void;
+  abstract onUpdate(deltaTime: number): void;
+  abstract onSceneChange(): void;
+  abstract onNodeAddedOrModified(node: Node): void;
+  abstract onNodeRemoved(node: Node): void;
+}
+
+export abstract class EngineSystemForComp extends EngineSystem {
+  protected components: Component[];
+
+  constructor(public readonly engine: Engine, private readonly compType: any) {
+    super();
+    this.onSceneChange();
+  }
+
+  onSceneChange(): void {
+    this.components = [];
+  }
+
+  onNodeAddedOrModified(node: Node): void {
+    // TODO Handle removed components, they no longer are on the node!
+
+    // Search specific component
+    let comp = this.findComponent(node);
+    if (comp) {
+      if (comp.idxInCompSystem < 0) {
+        this.components.push(comp);
+        comp.idxInCompSystem = this.components.length - 1;
+      }
+    }
+  }
+
+  onNodeRemoved(node: Node) { 
+    let comp = this.findComponent(node);
+    if (comp) {
+      if (comp.idxInCompSystem >= 0) {
+        // Remove entry from array without scaling
+        // TODO maybe moving the last here and changing its pointer is better?
+        // If the removed component is not the last, replace it with the last relinking its index
+        if (comp.idxInCompSystem < this.components.length - 1) {
+          let replaceComp = this.components[this.components.length - 1];
+          replaceComp.idxInCompSystem = comp.idxInCompSystem;
+          this.components[replaceComp.idxInCompSystem] = replaceComp;
+        } 
+        this.components.length -= 1;
+        comp.idxInCompSystem = -1;
+      }
+    }
+  }
+
+  private findComponent(node: Node): Component | null {
+    for(let [i, comp] of node.components) {
+      if (this.componentFilter(comp)) {
+        // Allow only one for node
+        return comp;
+      }
+    }
+    return null;
+  }
+  protected componentFilter(comp: Component): boolean {
+    return comp instanceof this.compType;
   }
 }

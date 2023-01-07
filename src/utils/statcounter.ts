@@ -3,19 +3,13 @@
  * Can be used for measuring values like ping.
  */
 export default class StatCounter {
-  discount: number;
-
   est_average: number;
   est_variance: number;
-
   initialized: boolean;
 
-  constructor(discount: number) {
-    this.discount = discount;
-
+  constructor(private alpha: number) {
     this.est_average = 0;
     this.est_variance = 0;
-
     this.initialized = false;
   }
 
@@ -25,21 +19,19 @@ export default class StatCounter {
       this.initialized = true;
     } else {
       let delta = measurement - this.est_average;
-      this.est_variance =
-        (1 - this.discount) *
-        (this.est_variance + this.discount * delta * delta);
-      this.est_average =
-        this.discount * measurement + (1 - this.discount) * this.est_average;
+      let one_minus_alpha = 1 - this.alpha;
+      this.est_variance = one_minus_alpha * (this.est_variance + this.alpha * delta * delta);
+      this.est_average = this.alpha * measurement + one_minus_alpha * this.est_average;
     }
   }
 
-  average() {
+  get average() {
     return this.est_average;
   }
-  variance() {
+  get variance() {
     return this.est_variance;
   }
-  stddev() {
+  get stddev() {
     return Math.sqrt(this.est_variance);
   }
 }

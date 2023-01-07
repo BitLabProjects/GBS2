@@ -1,6 +1,6 @@
 import * as Peer from "peerjs";
 import { DefaultInput, DefaultInputReader } from "./defaultinput";
-import StatCounter from "./statcounter";
+import StatCounter from "../utils/statcounter";
 import { LockstepNetcode } from "./netcode/lockstep";
 import { NetplayPlayer, NetplayState } from "./types";
 
@@ -133,8 +133,8 @@ export class RollbackWrapper extends GameWrapper {
       this.stats.innerHTML = `
         <div>Netcode Algorithm: Rollback</div>
         <div>Ping: ${this.pingMeasure
-          .average()
-          .toFixed(2)} ms +/- ${this.pingMeasure.stddev().toFixed(2)} ms</div>
+          .average
+          .toFixed(2)} ms +/- ${this.pingMeasure.stddev.toFixed(2)} ms</div>
         <div>History Size: ${this.rollbackNetcode!.history.length}</div>
         <div>Frame Number: ${this.rollbackNetcode!.currentFrame()}</div>
         <div>Largest Future Size: ${this.rollbackNetcode!.largestFutureSize()}</div>

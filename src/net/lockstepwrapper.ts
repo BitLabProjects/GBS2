@@ -1,6 +1,6 @@
 import * as Peer from "peerjs";
 import { DefaultInput, DefaultInputReader } from "./defaultinput";
-import StatCounter from "./statcounter";
+import StatCounter from "../utils/statcounter";
 import { LockstepNetcode } from "./netcode/lockstep";
 import { NetplayPlayer, NetplayState } from "./types";
 
@@ -123,8 +123,8 @@ export class LockstepWrapper extends GameWrapper {
       this.stats.innerHTML = `
       <div>Netcode Algorithm: Lockstep</div>
       <div>Ping: ${this.pingMeasure
-        .average()
-        .toFixed(2)} ms +/- ${this.pingMeasure.stddev().toFixed(2)} ms</div>
+        .average
+        .toFixed(2)} ms +/- ${this.pingMeasure.stddev.toFixed(2)} ms</div>
       <div>Frame Number: ${this.lockstepNetcode!.frame}</div>
       <div>Missed Frames: ${this.lockstepNetcode!.missedFrames}</div>
 

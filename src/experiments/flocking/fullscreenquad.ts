@@ -1,16 +1,21 @@
 import { Material } from '../../engine/material'
-import { Node } from '../../engine/node'
+import { Component } from '../../engine/node'
 import { Scene } from '../../engine/scene';
 
-export class FullScreenQuad implements Node {
+export class FullScreenQuad extends Component {
   material: Material;
 
   private vertexBuffer: WebGLBuffer;
   private elementBuffer: WebGLBuffer;
 
-  constructor(public readonly scene: Scene) {
-    scene.addNode(this);
-    this.material = new Material(scene.engine, 
+  constructor() {
+    super();
+  }
+
+  maybeCreate(): void {
+    if (this.material) return;
+
+    this.material = new Material(this.scene.engine, 
       `#version 300 es
        precision lowp float;
        in vec2 a_position; 
@@ -119,9 +124,6 @@ export class FullScreenQuad implements Node {
          }
        }
       `);
-  }
-
-  onCreated(): void {
     this.material.maybeCreate();
     let gl = this.scene.engine.gl;
 
@@ -158,7 +160,9 @@ export class FullScreenQuad implements Node {
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
   }
 
-  onUpdate(time: number, deltaTime: number): void {
+  onUpdate(deltaTime: number): void {
+    this.maybeCreate();
+
     let gl = this.scene.engine.gl;
 
     this.bindBuffers(gl);

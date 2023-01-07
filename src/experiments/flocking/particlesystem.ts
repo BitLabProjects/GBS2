@@ -1,10 +1,10 @@
 import { Material } from '../../engine/material'
 import { ParticleMaterial } from './particlematerial';
-import { Node } from '../../engine/node'
 import { Scene } from '../../engine/scene';
 import { Texture } from '../../engine/texture';
+import { Component } from '../../engine/node';
 
-export class ParticleSystem implements Node {
+export class ParticleSystem extends Component {
   material: Material;
   texture: Texture;
 
@@ -19,14 +19,16 @@ export class ParticleSystem implements Node {
 
   private timeAccumulator: number;
 
-  constructor(public readonly scene: Scene, unitId: number) {
-    scene.addNode(this);
-    this.material = new ParticleMaterial(scene.engine);
-    this.texture = Texture.createFromUrl(scene.engine, `flocking/unit${unitId}.png`);
+  constructor(private unitId: number) {
+    super();
     this.timeAccumulator = -1;
   }
 
-  onCreated(): void {
+  maybeCreate(): void {
+    if (this.material) return;
+    this.material = new ParticleMaterial(this.scene.engine);
+    this.texture = Texture.createFromUrl(this.scene.engine, `flocking/unit${this.unitId}.png`);
+
     this.material.maybeCreate();
     let gl = this.scene.engine.gl;
 
@@ -40,7 +42,7 @@ export class ParticleSystem implements Node {
     vertices[2 * 2 + 1] = 1.0;
     vertices[3 * 2 + 0] = 1.0;
     vertices[3 * 2 + 1] = 0.0;
-    
+
     // Indices for the two triangles composing the rectangle
     const indices = new Uint16Array(ParticleSystem.NUM_INDICES);
     indices[0] = 0;
@@ -77,7 +79,9 @@ export class ParticleSystem implements Node {
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
   }
 
-  onUpdate(time: number, deltaTime: number): void {
+  onUpdate(deltaTime: number): void {
+    this.maybeCreate();
+
     let gl = this.scene.engine.gl;
 
     let updateSpeed = false;

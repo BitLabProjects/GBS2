@@ -1,6 +1,8 @@
 import { Engine } from "../../engine/engine";
+import { Node } from "../../engine/node";
 import { Scene } from "../../engine/scene";
-import { SpriteNode } from "../../engine/spritenode";
+import { SpriteComp } from "../../engine/spritecomp";
+import { Texture } from "../../engine/texture";
 import { DefaultInput } from "../../net/defaultinput";
 import { Game } from "../../net/game";
 import { RollbackWrapper } from "../../net/rollbackwrapper";
@@ -13,7 +15,8 @@ export class WebRTCSceneHost extends Scene {
   constructor(engine: Engine, roomName: string) {
     super(engine);
 
-    new FullScreenQuad(this);
+    let fsqNode = new Node(this);
+    fsqNode.addComponent(new FullScreenQuad());
 
     new RollbackWrapper(new SimpleGame(this), engine.canvas).start(roomName, false);
   }
@@ -23,7 +26,8 @@ export class WebRTCScene extends Scene {
   constructor(engine: Engine, roomName: string) {
     super(engine);
 
-    new FullScreenQuad(this);
+    let fsqNode = new Node(this);
+    fsqNode.addComponent(new FullScreenQuad());
 
     new RollbackWrapper(new SimpleGame(this), engine.canvas).start(roomName, true);
   }
@@ -62,9 +66,9 @@ class DeadUnitState {
 class SimpleGame extends Game {
   public static timestep = 1000 / 60; // Our game runs at 60 FPS;
 
-  private unitSprites: SpriteNode[];
-  private projectileSprites: SpriteNode[];
-  private deadUnitSprites: SpriteNode[];
+  private unitSprites: SpriteComp[];
+  private projectileSprites: SpriteComp[];
+  private deadUnitSprites: SpriteComp[];
 
   private state: GameState;
 
@@ -201,72 +205,75 @@ class SimpleGame extends Game {
   // Draw the state of our game onto a canvas.
   draw() {
     for (let [i, unit] of this.state.units.entries()) {
-      let spriteNode: SpriteNode;
+      let spriteComp: SpriteComp;
       if (this.unitSprites.length <= i) {
-        spriteNode = new SpriteNode(this.scene, `flocking/unit${i + 1}.png`);
-        this.unitSprites.push(spriteNode);
-        spriteNode.onCreated();
+        let node = new Node(this.scene);
+        spriteComp = new SpriteComp(0, 0, Texture.createFromUrl(this.scene.engine, `flocking/unit${i + 1}.png`));
+        this.unitSprites.push(spriteComp);
+        node.addComponent(spriteComp);
       } else {
-        spriteNode = this.unitSprites[i];
+        spriteComp = this.unitSprites[i];
       }
 
       // animate sprite color based on knock strength
       let knockLen = Math.sqrt(unit.xKnock * unit.xKnock + unit.yKnock * unit.yKnock);
       let redQ = knockLen / 50;
-      spriteNode.color.g = 1 - redQ;
-      spriteNode.color.b = 1 - redQ;
+      spriteComp.color.g = 1 - redQ;
+      spriteComp.color.b = 1 - redQ;
 
-      spriteNode.pos.x = unit.x;
-      spriteNode.pos.y = unit.y;
+      spriteComp.pos.x = unit.x;
+      spriteComp.pos.y = unit.y;
     }
 
     // Remove leftover unit sprites
     let leftoverUnitSprites = this.unitSprites.splice(this.state.units.length);
     for (let sprite of leftoverUnitSprites) {
-      this.scene.removeNode(sprite);
+      this.scene.removeNode(sprite.node!);
     }
 
     // TODO Extract sync logic and unify with units above
     for (let [i, projectile] of this.state.projectiles.entries()) {
-      let spriteNode: SpriteNode;
+      let spriteComp: SpriteComp;
       if (this.projectileSprites.length <= i) {
-        spriteNode = new SpriteNode(this.scene, `webrtc/bullet1.png`);
-        this.projectileSprites.push(spriteNode);
-        spriteNode.onCreated();
+        let node = new Node(this.scene);
+        spriteComp = new SpriteComp(0, 0, Texture.createFromUrl(this.scene.engine, `webrtc/bullet1.png`));
+        this.projectileSprites.push(spriteComp);
+        node.addComponent(spriteComp);
       } else {
-        spriteNode = this.projectileSprites[i];
+        spriteComp = this.projectileSprites[i];
       }
-      spriteNode.pos.x = projectile.x;
-      spriteNode.pos.y = projectile.y;
+      spriteComp.pos.x = projectile.x;
+      spriteComp.pos.y = projectile.y;
     }
 
     // Remove leftover projectile sprites
     let leftoverProjectileSprites = this.projectileSprites.splice(this.state.projectiles.length);
     for (let sprite of leftoverProjectileSprites) {
-      this.scene.removeNode(sprite);
+      this.scene.removeNode(sprite.node!);
     }
 
     for (let [i, unit] of this.state.deadUnits.entries()) {
-      let spriteNode: SpriteNode;
+      let spriteComp: SpriteComp;
       if (this.deadUnitSprites.length <= i) {
-        spriteNode = new SpriteNode(this.scene, `flocking/unit${unit.playerId+1}.png`);
-        this.deadUnitSprites.push(spriteNode);
-        spriteNode.onCreated();
+        let node = new Node(this.scene);
+        spriteComp = new SpriteComp(0, 0, Texture.createFromUrl(this.scene.engine, `flocking/unit${unit.playerId+1}.png`));
+        this.deadUnitSprites.push(spriteComp);
+        node.addComponent(spriteComp);
       } else {
-        spriteNode = this.deadUnitSprites[i];
+        spriteComp = this.deadUnitSprites[i];
       }
 
       // animate opacity based on remaining time
-      spriteNode.color.a = Math.min(1, unit.fadeTime / 20) * 0.8;
-      spriteNode.angle = Math.PI;
-      spriteNode.pos.x = unit.x;
-      spriteNode.pos.y = unit.y;
+      spriteComp.color.a = Math.min(1, unit.fadeTime / 20) * 0.8;
+      spriteComp.angle = Math.PI;
+      spriteComp.pos.x = unit.x;
+      spriteComp.pos.y = unit.y;
     }
 
     // Remove leftover unit sprites
     let leftoverDeadUnitSprites = this.deadUnitSprites.splice(this.state.deadUnits.length);
     for (let sprite of leftoverDeadUnitSprites) {
-      this.scene.removeNode(sprite);
+      this.scene.removeNode(sprite.node!);
     }
   }
 }
