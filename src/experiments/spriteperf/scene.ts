@@ -21,12 +21,15 @@ export class SpritePerfScene extends Scene {
     this.angleSpeeds = [];
     this.xSpeeds = [];
     this.ySpeeds = [];
-    for (let i = 0; i < 100; i++) {
+    let textures = [];
+    textures.push(Texture.createFromUrl(engine, `flocking/unit1.png`));
+    textures.push(Texture.createFromUrl(engine, `flocking/unit2.png`));
+    for (let i = 0; i < 100 * 1000; i++) {
       let node = new Node(this);
       let comp = new SpriteComp(
         Math.random() * engine.width * 0.8 + engine.width * 0.1 - engine.width / 2,
         Math.random() * engine.height * 0.8 + engine.height * 0.1 - engine.height / 2,
-        Texture.createFromUrl(engine, "flocking/unit2.png"));
+        textures[i % 2]);
       node.addComponent(comp);
       this.sprites.push(comp);
 
@@ -49,7 +52,7 @@ export class SpritePerfScene extends Scene {
     this.statUpdateAccumulator += deltaTime;
     if (this.statUpdateAccumulator > 1) {
       this.statUpdateAccumulator -= 0.25;
-      this.label.innerText = `fps: ${this.fpsMeasure.average.toFixed(1)} ms +/- ${this.fpsMeasure.stddev.toFixed(1)} ms`;
+      this.label.innerText = `fps: ${this.fpsMeasure.average.toFixed(1)} fps +/- ${this.fpsMeasure.stddev.toFixed(1)} fps`;
     }
   }
 }

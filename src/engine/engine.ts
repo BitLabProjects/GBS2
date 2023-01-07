@@ -222,6 +222,7 @@ export abstract class EngineSystemForComp extends EngineSystem {
         this.components.push(comp);
         comp.idxInCompSystem = this.components.length - 1;
       }
+      this.onComponentChanged(comp, false);
     }
   }
 
@@ -239,6 +240,7 @@ export abstract class EngineSystemForComp extends EngineSystem {
         } 
         this.components.length -= 1;
         comp.idxInCompSystem = -1;
+        this.onComponentChanged(comp, true);
       }
     }
   }
@@ -254,5 +256,8 @@ export abstract class EngineSystemForComp extends EngineSystem {
   }
   protected componentFilter(comp: Component): boolean {
     return comp instanceof this.compType;
+  }
+
+  protected onComponentChanged(comp: Component, isDelete: boolean): void {
   }
 }
