@@ -1,3 +1,5 @@
+import { Geometry } from "./geometry";
+import { GeometryInstances } from "./geometryinstances";
 import { Material } from "./material";
 import { Node, Component } from "./node";
 import { Scene } from "./scene";
@@ -8,6 +10,7 @@ export class Engine {
   public readonly gl: WebGL2RenderingContext;
   private material: Material;
   private materialShaderProgram: WebGLShader;
+  private geometry: Geometry;
 
   private systems: EngineSystem[];
   private changedNodes: Node[];
@@ -189,6 +192,33 @@ export class Engine {
     // Tell the shader we bound the texture to texture unit 0
     let samplerLocation = this.gl.getUniformLocation(this.material.maybeCreate(), samplerName);
     this.gl.uniform1i(samplerLocation, 0);
+  }
+
+  public useGeometry(geometry: Geometry, geometryInstances?: GeometryInstances) {
+    this.geometry = geometry;
+    
+    let program = this.material.maybeCreate();
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, geometry.vertexBuffer);
+    const posLocation = this.gl.getAttribLocation(program, "a_position");
+    this.gl.vertexAttribPointer(posLocation, 2, this.gl.FLOAT, false, 2 * 4, 0);
+    this.gl.enableVertexAttribArray(posLocation);
+
+    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, geometry.elementBuffer);
+
+    if (geometryInstances) {
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, geometryInstances.instanceBuffer);
+      let descriptors = geometryInstances.descriptors;
+      let offset = 0;
+      for (var i = 0; i < descriptors.length; i++) {
+        const name = descriptors[i].name;
+        const length = descriptors[i].length;
+        const attribLocation = this.gl.getAttribLocation(program, name);
+        this.gl.vertexAttribPointer(attribLocation, length, this.gl.FLOAT, false, geometryInstances.entriesPerInstance * 4, offset * 4);
+        this.gl.enableVertexAttribArray(attribLocation);
+        this.gl.vertexAttribDivisor(attribLocation, 1);
+        offset += length;
+      }
+    }
   }
 }
 

@@ -1,4 +1,6 @@
 import { Engine, EngineSystemForComp } from "./engine";
+import { Geometry } from "./geometry";
+import { GeometryInstances } from "./geometryinstances";
 import { Material } from "./material";
 import { Component, Transform2D } from "./node";
 import { SpriteComp } from "./spritecomp";
@@ -10,23 +12,18 @@ export class SpriteSystem extends EngineSystemForComp {
     this.material = new SpriteMaterial(engine);
     this.textures = []
     this.componentsForTexture = [];
-    this.instanceDataForTexture = [];
-    this.instanceBufferForTexture = [];
+    this.geometryInstancesForTexture = [];
   }
-  
+
   private material: Material;
-  private vertexBuffer: WebGLBuffer;
-  private elementBuffer: WebGLBuffer;
-  
+  private geometry: Geometry;
+
   private textures: Texture[];
   private componentsForTexture: SpriteComp[][];
-  private instanceDataForTexture: Float32Array[];
-  private instanceBufferForTexture: WebGLBuffer[];
+  private geometryInstancesForTexture: GeometryInstances[];
   private readonly floatsPerInstance = 2 + 1 + 4 + 2;
 
   onCreate(): void {
-    let gl = this.engine.gl;
-
     // Vertices for a rectangle in the [0, 1] range
     const vertices = new Float32Array(2 * 4);
     vertices[0 * 2 + 0] = 0.0;
@@ -37,7 +34,7 @@ export class SpriteSystem extends EngineSystemForComp {
     vertices[2 * 2 + 1] = 1.0;
     vertices[3 * 2 + 0] = 1.0;
     vertices[3 * 2 + 1] = 0.0;
-    
+
     // Indices for the two triangles composing the rectangle
     const indices = new Uint16Array(6);
     indices[0] = 0;
@@ -47,13 +44,7 @@ export class SpriteSystem extends EngineSystemForComp {
     indices[4] = 0;
     indices[5] = 3;
 
-    this.vertexBuffer = gl.createBuffer()!;
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
-
-    this.elementBuffer = gl.createBuffer()!;
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.elementBuffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+    this.geometry = new Geometry(this.engine, vertices, indices);
   }
 
   protected componentFilter(comp: Component): boolean {
@@ -71,7 +62,12 @@ export class SpriteSystem extends EngineSystemForComp {
       idxTex = this.textures.length - 1;
       this.componentsForTexture[idxTex] = [];
       // Will be filled on each update
-      this.instanceBufferForTexture[idxTex] = this.engine.gl.createBuffer()!;
+      this.geometryInstancesForTexture[idxTex] = new GeometryInstances(this.engine, [
+        { name: "a_pos", length: 2 },
+        { name: "a_angle", length: 1 },
+        { name: "a_color", length: 4 },
+        { name: "a_scale", length: 2 },
+      ]);
     }
 
     let components = this.componentsForTexture[idxTex];
@@ -94,25 +90,20 @@ export class SpriteSystem extends EngineSystemForComp {
 
   onUpdate(deltaTime: number): void {
     let gl = this.engine.gl;
-    
-    for(let idxTex = 0; idxTex < this.textures.length; idxTex += 1) {
+
+    for (let idxTex = 0; idxTex < this.textures.length; idxTex += 1) {
       let components = this.componentsForTexture[idxTex];
       // Fill instance data
       let instancesCount = components.length;
       if (instancesCount === 0) {
         return;
       }
-      let desiredLength = instancesCount * this.floatsPerInstance;
-      let instanceData = this.instanceDataForTexture[idxTex];
-      if (!instanceData || instanceData.length < desiredLength) {
-        instanceData = new Float32Array(desiredLength);
-        this.instanceDataForTexture[idxTex] = instanceData;
-      }
-      
-      for(let [i, comp] of components.entries()) {
+      let geometryInstances = this.geometryInstancesForTexture[idxTex];
+      let instanceData = geometryInstances.allocate(instancesCount);
+      for (let [i, comp] of components.entries()) {
         let spriteComp = comp as SpriteComp;
         let transform = comp.node!.transform as Transform2D;
-        
+
         const offset = i * this.floatsPerInstance;
         instanceData[offset + 0] = transform.x;
         instanceData[offset + 1] = transform.y;
@@ -124,48 +115,20 @@ export class SpriteSystem extends EngineSystemForComp {
         instanceData[offset + 7] = transform.scaleX;
         instanceData[offset + 8] = transform.scaleY;
       }
+      geometryInstances.updateBuffer();
 
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBufferForTexture[idxTex]);
-      gl.bufferData(gl.ARRAY_BUFFER, instanceData, gl.DYNAMIC_DRAW, 0, desiredLength);
-  
-      this.bindBuffers(gl, this.floatsPerInstance);
-  
       this.engine.useMaterial(this.material);
       this.engine.useTexture(this.textures[idxTex], "uSampler");
+      this.engine.useGeometry(this.geometry, geometryInstances);
+
       gl.drawElementsInstanced(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0, instancesCount);
     }
-  }
-
-  private bindBuffers(gl: WebGL2RenderingContext, floatsPerInstance: number) {
-    const attrs_per_inst = [
-      { name: "a_pos", length: 2, offset: 0 },
-      { name: "a_angle", length: 1, offset: 2 },
-      { name: "a_color", length: 4, offset: 3 },
-      { name: "a_scale", length: 2, offset: 7 },
-    ];
-
-    for (var i = 0; i < attrs_per_inst.length; i++) {
-      const name = attrs_per_inst[i].name;
-      const length = attrs_per_inst[i].length;
-      const offset = attrs_per_inst[i].offset;
-      const attribLocation = gl.getAttribLocation(this.material.maybeCreate(), name);
-      gl.vertexAttribPointer(attribLocation, length, gl.FLOAT, false, floatsPerInstance * 4, offset * 4);
-      gl.enableVertexAttribArray(attribLocation);
-      gl.vertexAttribDivisor(attribLocation, 1);
-    }
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
-    const posLocation = gl.getAttribLocation(this.material.maybeCreate(), "a_position");
-    gl.vertexAttribPointer(posLocation, 2, gl.FLOAT, false, 2 * 4, 0);
-    gl.enableVertexAttribArray(posLocation);
-
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.elementBuffer);
   }
 }
 
 export class SpriteMaterial extends Material {
   constructor(public readonly engine: Engine) {
-    super(engine, 
+    super(engine,
       `#version 300 es
        precision lowp float;
        
