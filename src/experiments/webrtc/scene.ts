@@ -66,6 +66,8 @@ class SimpleGame extends Game {
   private unitSprites: SpriteComp[];
   private projectileSprites: SpriteComp[];
   private deadUnitSprites: SpriteComp[];
+  private unitTextures: Texture[];
+  private projectileTexture: Texture;
 
   private state: GameState;
 
@@ -83,6 +85,12 @@ class SimpleGame extends Game {
     this.unitSprites = [];
     this.projectileSprites = [];
     this.deadUnitSprites = [];
+
+    this.unitTextures = [
+      Texture.createFromUrl(this.scene.engine, `flocking/unit1.png`),
+      Texture.createFromUrl(this.scene.engine, `flocking/unit2.png`)
+    ]
+    this.projectileTexture = Texture.createFromUrl(this.scene.engine, `webrtc/bullet1.png`)
 
     this.draw();
 
@@ -126,7 +134,7 @@ class SimpleGame extends Game {
           (input.touchControls!.joystick1.y),
       };
 
-      
+
       // Apply the velocity to the appropriate player.
       let unitState = this.state.units[player.getID()];
       let velLen = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
@@ -145,10 +153,10 @@ class SimpleGame extends Game {
       } else {
         if (input.isPressed(" ") || input.touchControls!.joystick2.x !== 0 || input.touchControls!.joystick2.y !== 0) {
           // Fire
-          this.state.projectiles.push(new ProjectileState(unitState.x + unitState.xDir * 10, 
-                                                          unitState.y + unitState.yDir * 10, 
-                                                          unitState.xDir * 60, unitState.yDir * 60, 
-                                                          60 * 3, player.getID()));
+          this.state.projectiles.push(new ProjectileState(unitState.x + unitState.xDir * 10,
+            unitState.y + unitState.yDir * 10,
+            unitState.xDir * 60, unitState.yDir * 60,
+            60 * 3, player.getID()));
           unitState.coolDown = 0.5;
         }
       }
@@ -206,7 +214,7 @@ class SimpleGame extends Game {
     for (let [i, unit] of this.state.units.entries()) {
       let spriteComp: SpriteComp;
       if (this.unitSprites.length <= i) {
-        spriteComp = new SpriteComp(Texture.createFromUrl(this.scene.engine, `flocking/unit${i + 1}.png`));
+        spriteComp = new SpriteComp(this.unitTextures[i]);
         this.unitSprites.push(spriteComp);
         Node.createFromComp(this.scene, spriteComp);
       } else {
@@ -234,7 +242,7 @@ class SimpleGame extends Game {
     for (let [i, projectile] of this.state.projectiles.entries()) {
       let spriteComp: SpriteComp;
       if (this.projectileSprites.length <= i) {
-        spriteComp = new SpriteComp(Texture.createFromUrl(this.scene.engine, `webrtc/bullet1.png`));
+        spriteComp = new SpriteComp(this.projectileTexture);
         this.projectileSprites.push(spriteComp);
         Node.createFromComp(this.scene, spriteComp);
       } else {
@@ -254,7 +262,7 @@ class SimpleGame extends Game {
     for (let [i, unit] of this.state.deadUnits.entries()) {
       let spriteComp: SpriteComp;
       if (this.deadUnitSprites.length <= i) {
-        spriteComp = new SpriteComp(Texture.createFromUrl(this.scene.engine, `flocking/unit${unit.playerId+1}.png`));
+        spriteComp = new SpriteComp(this.unitTextures[unit.playerId]);
         this.deadUnitSprites.push(spriteComp);
         Node.createFromComp(this.scene, spriteComp);
       } else {

@@ -1,4 +1,4 @@
-import { Engine, EngineSystemForComp } from "./engine";
+import { ComponentTracker, Engine, EngineSystemWithTrackers } from "./engine";
 import { Geometry } from "./geometry";
 import { GeometryInstances } from "./geometryinstances";
 import { Material } from "./material";
@@ -6,9 +6,14 @@ import { Component, Transform2D } from "./node";
 import { SpriteComp } from "./spritecomp";
 import { Texture } from "./texture";
 
-export class SpriteSystem extends EngineSystemForComp {
+export class SpriteSystem extends EngineSystemWithTrackers {
   constructor(engine: Engine) {
-    super(engine, SpriteComp);
+    super(engine);
+    this.addTracker(new ComponentTracker(SpriteComp, 
+                    this.componentFilter, 
+                    undefined, 
+                    this.onComponentChangedOrRemoved));
+
     this.material = new SpriteMaterial(engine);
     this.textures = []
     this.componentsForTexture = [];
@@ -21,7 +26,6 @@ export class SpriteSystem extends EngineSystemForComp {
   private textures: Texture[];
   private componentsForTexture: SpriteComp[][];
   private geometryInstancesForTexture: GeometryInstances[];
-  private readonly floatsPerInstance = 2 + 1 + 4 + 2;
 
   onCreate(): void {
     // Vertices for a rectangle in the [0, 1] range
@@ -47,11 +51,11 @@ export class SpriteSystem extends EngineSystemForComp {
     this.geometry = new Geometry(this.engine, vertices, indices);
   }
 
-  protected componentFilter(comp: Component): boolean {
-    return super.componentFilter(comp) && (comp.node!.transform instanceof Transform2D);
+  protected componentFilter = (comp: Component) => {
+    return comp.node!.transform instanceof Transform2D;
   }
 
-  protected onComponentChanged(comp: Component, isDelete: boolean): void {
+  protected onComponentChangedOrRemoved = (comp: Component, isDelete: boolean) => {
     let spriteComp = comp as SpriteComp;
     let idxTex = this.textures.indexOf(spriteComp.texture);
     if (idxTex < 0) {
@@ -100,11 +104,11 @@ export class SpriteSystem extends EngineSystemForComp {
       }
       let geometryInstances = this.geometryInstancesForTexture[idxTex];
       let instanceData = geometryInstances.allocate(instancesCount);
-      for (let [i, comp] of components.entries()) {
+      let offset = 0;
+      for (let [_, comp] of components.entries()) {
         let spriteComp = comp as SpriteComp;
         let transform = comp.node!.transform as Transform2D;
 
-        const offset = i * this.floatsPerInstance;
         instanceData[offset + 0] = transform.x;
         instanceData[offset + 1] = transform.y;
         instanceData[offset + 2] = transform.angle;
@@ -114,6 +118,7 @@ export class SpriteSystem extends EngineSystemForComp {
         instanceData[offset + 6] = spriteComp.color.a;
         instanceData[offset + 7] = transform.scaleX;
         instanceData[offset + 8] = transform.scaleY;
+        offset += geometryInstances.entriesPerInstance;
       }
       geometryInstances.updateBuffer();
 

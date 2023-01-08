@@ -22,7 +22,7 @@ export class Engine {
   private time: number;
 
   constructor(public readonly canvas: HTMLCanvasElement) {
-    this.gl = canvas.getContext("webgl2", {antialias: false})!;
+    this.gl = canvas.getContext("webgl2", { antialias: false })!;
     this.lastNodeID = 0;
     this.systems = [];
     this.changedNodes = [];
@@ -78,13 +78,13 @@ export class Engine {
     // Set the WebGL context to be the full size of the canvas
     this.onResize();
   }
-  
+
   public onResize() {
     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
   }
 
   public render() {
-    for(let system of this.systems) {
+    for (let system of this.systems) {
       system.onCreate();
     }
 
@@ -113,20 +113,20 @@ export class Engine {
         isPlaying = false;
         console.log("hidden");
       }
-     });
+    });
 
     let onAnimationFrame = () => {
       if (isPlaying) {
         let repCount = firstSim ? 1 : 1;
         firstSim = false;
-  
+
         let curTime = dateOrPerformance.now();
         let deltaTime = (curTime - prevTime) / 1000;
         prevTime = curTime;
 
         if (deltaTime > 0) {
           this.time += deltaTime;
-          for(let i=0; i<repCount; i++) {
+          for (let i = 0; i < repCount; i++) {
             this.onUpdate(deltaTime);
           }
         }
@@ -148,21 +148,21 @@ export class Engine {
     //this.gl.clear(this.gl.COLOR_BUFFER_BIT);
     this.scene.onUpdate(deltaTime);
 
-    for(let node of this.removedNodes) {
-      for(let system of this.systems) {
+    for (let node of this.removedNodes) {
+      for (let system of this.systems) {
         system.onNodeRemoved(node);
       }
     }
     this.removedNodes.length = 0;
 
-    for(let node of this.changedNodes) {
-      for(let system of this.systems) {
+    for (let node of this.changedNodes) {
+      for (let system of this.systems) {
         system.onNodeAddedOrModified(node);
       }
     }
     this.changedNodes.length = 0;
 
-    for(let system of this.systems) {
+    for (let system of this.systems) {
       system.onUpdate(deltaTime);
     }
   }
@@ -190,16 +190,15 @@ export class Engine {
     this.gl.bindTexture(this.gl.TEXTURE_2D, texture.texture);
 
     // Tell the shader we bound the texture to texture unit 0
-    let samplerLocation = this.gl.getUniformLocation(this.material.maybeCreate(), samplerName);
+    let samplerLocation = this.gl.getUniformLocation(this.materialShaderProgram, samplerName);
     this.gl.uniform1i(samplerLocation, 0);
   }
 
   public useGeometry(geometry: Geometry, geometryInstances?: GeometryInstances) {
     this.geometry = geometry;
-    
-    let program = this.material.maybeCreate();
+
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, geometry.vertexBuffer);
-    const posLocation = this.gl.getAttribLocation(program, "a_position");
+    const posLocation = this.gl.getAttribLocation(this.materialShaderProgram, "a_position");
     this.gl.vertexAttribPointer(posLocation, 2, this.gl.FLOAT, false, 2 * 4, 0);
     this.gl.enableVertexAttribArray(posLocation);
 
@@ -212,7 +211,7 @@ export class Engine {
       for (var i = 0; i < descriptors.length; i++) {
         const name = descriptors[i].name;
         const length = descriptors[i].length;
-        const attribLocation = this.gl.getAttribLocation(program, name);
+        const attribLocation = this.gl.getAttribLocation(this.materialShaderProgram, name);
         this.gl.vertexAttribPointer(attribLocation, length, this.gl.FLOAT, false, geometryInstances.entriesPerInstance * 4, offset * 4);
         this.gl.enableVertexAttribArray(attribLocation);
         this.gl.vertexAttribDivisor(attribLocation, 1);
@@ -225,20 +224,20 @@ export class Engine {
 export abstract class EngineSystem {
   abstract onCreate(): void;
   abstract onUpdate(deltaTime: number): void;
-  abstract onSceneChange(): void;
+  // TODO Reset systems on scene change
+  // abstract onSceneChange(): void;
   abstract onNodeAddedOrModified(node: Node): void;
   abstract onNodeRemoved(node: Node): void;
 }
 
-export abstract class EngineSystemForComp extends EngineSystem {
-  protected components: Component[];
+export class ComponentTracker {
+  public readonly components: Component[];
 
-  constructor(public readonly engine: Engine, private readonly compType: any) {
-    super();
-    this.onSceneChange();
-  }
-
-  onSceneChange(): void {
+  constructor(
+    private readonly compType: any,
+    private readonly componentFilter?: (comp: Component) => boolean,
+    private readonly onComponentAdded?: (comp: Component) => void,
+    private readonly onComponentChangedOrRemoved?: (comp: Component, isDelete: boolean) => void) {
     this.components = [];
   }
 
@@ -251,13 +250,17 @@ export abstract class EngineSystemForComp extends EngineSystem {
       if (comp.idxInCompSystem < 0) {
         this.components.push(comp);
         comp.idxInCompSystem = this.components.length - 1;
-        this.onComponentAdded(comp);
+        if (this.onComponentAdded) {
+          this.onComponentAdded(comp);
+        }
       }
-      this.onComponentChanged(comp, false);
+      if (this.onComponentChangedOrRemoved) {
+        this.onComponentChangedOrRemoved(comp, false);
+      }
     }
   }
 
-  onNodeRemoved(node: Node) { 
+  onNodeRemoved(node: Node) {
     let comp = this.findComponent(node);
     if (comp) {
       if (comp.idxInCompSystem >= 0) {
@@ -268,30 +271,51 @@ export abstract class EngineSystemForComp extends EngineSystem {
           let replaceComp = this.components[this.components.length - 1];
           replaceComp.idxInCompSystem = comp.idxInCompSystem;
           this.components[replaceComp.idxInCompSystem] = replaceComp;
-        } 
+        }
         this.components.length -= 1;
         comp.idxInCompSystem = -1;
-        this.onComponentChanged(comp, true);
+        if (this.onComponentChangedOrRemoved) {
+          this.onComponentChangedOrRemoved(comp, true);
+        }
       }
     }
   }
 
   private findComponent(node: Node): Component | null {
-    for(let [i, comp] of node.components) {
-      if (this.componentFilter(comp)) {
+    for (let [i, comp] of node.components) {
+      if (comp instanceof this.compType) {
+        if (this.componentFilter && !this.componentFilter(comp)) {
+          continue;
+        }
         // Allow only one for node
         return comp;
       }
     }
     return null;
   }
-  protected componentFilter(comp: Component): boolean {
-    return comp instanceof this.compType;
+}
+
+export abstract class EngineSystemWithTrackers extends EngineSystem {
+  protected trackers: ComponentTracker[];
+
+  constructor(public readonly engine: Engine) {
+    super();
+    this.trackers = [];
   }
 
-  protected onComponentAdded(comp: Component): void {
+  protected addTracker(tracker: ComponentTracker) {
+    this.trackers.push(tracker);
   }
 
-  protected onComponentChanged(comp: Component, isDelete: boolean): void {
+  onNodeAddedOrModified(node: Node): void {
+    for(let tracker of this.trackers) {
+      tracker.onNodeAddedOrModified(node);
+    }
+  }
+
+  onNodeRemoved(node: Node) {
+    for(let tracker of this.trackers) {
+      tracker.onNodeRemoved(node);
+    }
   }
 }
