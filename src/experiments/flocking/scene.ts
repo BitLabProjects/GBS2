@@ -8,12 +8,8 @@ export class FlockingScene extends Scene {
   constructor(engine: Engine) {
     super(engine);
 
-    let fsqNode = new Node(this);
-    fsqNode.addComponent(new FullScreenQuad());
-
-    let ps1Node = new Node(this);
-    ps1Node.addComponent(new ParticleSystem(1));
-    let ps2Node = new Node(this);
-    ps2Node.addComponent(new ParticleSystem(2));
+    Node.createFromComp(this, new FullScreenQuad());
+    Node.createFromComp(this, new ParticleSystem(1));
+    Node.createFromComp(this, new ParticleSystem(2));
   }
 }

@@ -1,6 +1,6 @@
 import { Engine, EngineSystemForComp } from "./engine";
 import { Material } from "./material";
-import { Component } from "./node";
+import { Component, Transform2D } from "./node";
 import { SpriteComp } from "./spritecomp";
 import { Texture } from "./texture";
 
@@ -22,9 +22,9 @@ export class SpriteSystem extends EngineSystemForComp {
   private componentsForTexture: SpriteComp[][];
   private instanceDataForTexture: Float32Array[];
   private instanceBufferForTexture: WebGLBuffer[];
-  private readonly floatsPerInstance = 2 + 1 + 4;
+  private readonly floatsPerInstance = 2 + 1 + 4 + 2;
 
-  onCreated(): void {
+  onCreate(): void {
     let gl = this.engine.gl;
 
     // Vertices for a rectangle in the [0, 1] range
@@ -54,6 +54,10 @@ export class SpriteSystem extends EngineSystemForComp {
     this.elementBuffer = gl.createBuffer()!;
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.elementBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+  }
+
+  protected componentFilter(comp: Component): boolean {
+    return super.componentFilter(comp) && (comp.node!.transform instanceof Transform2D);
   }
 
   protected onComponentChanged(comp: Component, isDelete: boolean): void {
@@ -107,15 +111,18 @@ export class SpriteSystem extends EngineSystemForComp {
       
       for(let [i, comp] of components.entries()) {
         let spriteComp = comp as SpriteComp;
+        let transform = comp.node!.transform as Transform2D;
         
         const offset = i * this.floatsPerInstance;
-        instanceData[offset + 0] = spriteComp.pos.x;
-        instanceData[offset + 1] = spriteComp.pos.y;
-        instanceData[offset + 2] = spriteComp.angle;
+        instanceData[offset + 0] = transform.x;
+        instanceData[offset + 1] = transform.y;
+        instanceData[offset + 2] = transform.angle;
         instanceData[offset + 3] = spriteComp.color.r;
         instanceData[offset + 4] = spriteComp.color.g;
         instanceData[offset + 5] = spriteComp.color.b;
         instanceData[offset + 6] = spriteComp.color.a;
+        instanceData[offset + 7] = transform.scaleX;
+        instanceData[offset + 8] = transform.scaleY;
       }
 
       gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBufferForTexture[idxTex]);
@@ -134,6 +141,7 @@ export class SpriteSystem extends EngineSystemForComp {
       { name: "a_pos", length: 2, offset: 0 },
       { name: "a_angle", length: 1, offset: 2 },
       { name: "a_color", length: 4, offset: 3 },
+      { name: "a_scale", length: 2, offset: 7 },
     ];
 
     for (var i = 0; i < attrs_per_inst.length; i++) {
@@ -165,6 +173,7 @@ export class SpriteMaterial extends Material {
        in vec2 a_pos;
        in float a_angle;
        in vec4 a_color;
+       in vec2 a_scale;
        
        // uniforms automatically filled by engine, if present
        uniform vec2 u_viewport;
@@ -176,9 +185,9 @@ export class SpriteMaterial extends Material {
        
        void main() {
          mat3 LcsToWcsMatrix = mat3(
-           +cos(a_angle), +sin(a_angle),   0.0, //first column
-           -sin(a_angle), +cos(a_angle),   0.0,
-                 a_pos.x,       a_pos.y,   1.0
+           +cos(a_angle) * a_scale.x,             +sin(a_angle),   0.0, //first column
+                       -sin(a_angle), +cos(a_angle) * a_scale.y,   0.0,
+                             a_pos.x,                   a_pos.y,   1.0
          );
    
          // Scale position from [0, 1] to [0, sprite_width] and [0, sprite_height]

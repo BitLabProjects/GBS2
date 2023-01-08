@@ -1,5 +1,5 @@
 import { Engine } from "../../engine/engine";
-import { Node } from "../../engine/node";
+import { Node, Transform2D } from "../../engine/node";
 import { Scene } from "../../engine/scene";
 import { SpriteComp } from "../../engine/spritecomp";
 import { Texture } from "../../engine/texture";
@@ -10,14 +10,13 @@ import { TouchControl, VirtualJoystick } from "../../net/touchcontrols";
 import { NetplayPlayer, SerializedState } from "../../net/types";
 import { clone } from "../../net/utils";
 import { FullScreenQuad } from "../flocking/fullscreenquad";
+//import { JoystickComp } from "./JoystickComp";
 
 export class WebRTCSceneHost extends Scene {
   constructor(engine: Engine, roomName: string) {
     super(engine);
 
-    let fsqNode = new Node(this);
-    fsqNode.addComponent(new FullScreenQuad());
-
+    Node.createFromComp(this, new FullScreenQuad());
     new RollbackWrapper(new SimpleGame(this), engine.canvas).start(roomName, false);
   }
 }
@@ -26,9 +25,7 @@ export class WebRTCScene extends Scene {
   constructor(engine: Engine, roomName: string) {
     super(engine);
 
-    let fsqNode = new Node(this);
-    fsqNode.addComponent(new FullScreenQuad());
-
+    Node.createFromComp(this, new FullScreenQuad());
     new RollbackWrapper(new SimpleGame(this), engine.canvas).start(roomName, true);
   }
 }
@@ -92,6 +89,8 @@ class SimpleGame extends Game {
     this.virtualJoystick1 = new VirtualJoystick();
     this.virtualJoystick2 = new VirtualJoystick(true);
     this.touchControls = { 'joystick1': this.virtualJoystick1, 'joystick2': this.virtualJoystick2 };
+
+    //Node.createFromComp(this.scene, new JoystickComp(false));
   }
 
   serialize(): SerializedState {
@@ -207,10 +206,9 @@ class SimpleGame extends Game {
     for (let [i, unit] of this.state.units.entries()) {
       let spriteComp: SpriteComp;
       if (this.unitSprites.length <= i) {
-        let node = new Node(this.scene);
-        spriteComp = new SpriteComp(0, 0, Texture.createFromUrl(this.scene.engine, `flocking/unit${i + 1}.png`));
+        spriteComp = new SpriteComp(Texture.createFromUrl(this.scene.engine, `flocking/unit${i + 1}.png`));
         this.unitSprites.push(spriteComp);
-        node.addComponent(spriteComp);
+        Node.createFromComp(this.scene, spriteComp);
       } else {
         spriteComp = this.unitSprites[i];
       }
@@ -221,8 +219,9 @@ class SimpleGame extends Game {
       spriteComp.color.g = 1 - redQ;
       spriteComp.color.b = 1 - redQ;
 
-      spriteComp.pos.x = unit.x;
-      spriteComp.pos.y = unit.y;
+      let t = spriteComp.node!.transform as Transform2D;
+      t.x = unit.x;
+      t.y = unit.y;
     }
 
     // Remove leftover unit sprites
@@ -235,15 +234,15 @@ class SimpleGame extends Game {
     for (let [i, projectile] of this.state.projectiles.entries()) {
       let spriteComp: SpriteComp;
       if (this.projectileSprites.length <= i) {
-        let node = new Node(this.scene);
-        spriteComp = new SpriteComp(0, 0, Texture.createFromUrl(this.scene.engine, `webrtc/bullet1.png`));
+        spriteComp = new SpriteComp(Texture.createFromUrl(this.scene.engine, `webrtc/bullet1.png`));
         this.projectileSprites.push(spriteComp);
-        node.addComponent(spriteComp);
+        Node.createFromComp(this.scene, spriteComp);
       } else {
         spriteComp = this.projectileSprites[i];
       }
-      spriteComp.pos.x = projectile.x;
-      spriteComp.pos.y = projectile.y;
+      let t = spriteComp.node!.transform as Transform2D;
+      t.x = projectile.x;
+      t.y = projectile.y;
     }
 
     // Remove leftover projectile sprites
@@ -255,19 +254,19 @@ class SimpleGame extends Game {
     for (let [i, unit] of this.state.deadUnits.entries()) {
       let spriteComp: SpriteComp;
       if (this.deadUnitSprites.length <= i) {
-        let node = new Node(this.scene);
-        spriteComp = new SpriteComp(0, 0, Texture.createFromUrl(this.scene.engine, `flocking/unit${unit.playerId+1}.png`));
+        spriteComp = new SpriteComp(Texture.createFromUrl(this.scene.engine, `flocking/unit${unit.playerId+1}.png`));
         this.deadUnitSprites.push(spriteComp);
-        node.addComponent(spriteComp);
+        Node.createFromComp(this.scene, spriteComp);
       } else {
         spriteComp = this.deadUnitSprites[i];
       }
 
       // animate opacity based on remaining time
       spriteComp.color.a = Math.min(1, unit.fadeTime / 20) * 0.8;
-      spriteComp.angle = Math.PI;
-      spriteComp.pos.x = unit.x;
-      spriteComp.pos.y = unit.y;
+      let t = spriteComp.node!.transform as Transform2D;
+      t.x = unit.x;
+      t.y = unit.y;
+      t.angle = Math.PI;
     }
 
     // Remove leftover unit sprites

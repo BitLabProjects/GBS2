@@ -82,7 +82,7 @@ export class Engine {
 
   public render() {
     for(let system of this.systems) {
-      system.onCreated();
+      system.onCreate();
     }
 
     // for(let node of this.scene.nodes) {
@@ -193,7 +193,7 @@ export class Engine {
 }
 
 export abstract class EngineSystem {
-  abstract onCreated(): void;
+  abstract onCreate(): void;
   abstract onUpdate(deltaTime: number): void;
   abstract onSceneChange(): void;
   abstract onNodeAddedOrModified(node: Node): void;
@@ -221,6 +221,7 @@ export abstract class EngineSystemForComp extends EngineSystem {
       if (comp.idxInCompSystem < 0) {
         this.components.push(comp);
         comp.idxInCompSystem = this.components.length - 1;
+        this.onComponentAdded(comp);
       }
       this.onComponentChanged(comp, false);
     }
@@ -256,6 +257,9 @@ export abstract class EngineSystemForComp extends EngineSystem {
   }
   protected componentFilter(comp: Component): boolean {
     return comp instanceof this.compType;
+  }
+
+  protected onComponentAdded(comp: Component): void {
   }
 
   protected onComponentChanged(comp: Component, isDelete: boolean): void {
