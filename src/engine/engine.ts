@@ -230,7 +230,12 @@ export abstract class EngineSystem {
   abstract onNodeRemoved(node: Node): void;
 }
 
-export class ComponentTracker {
+export interface ITracker {
+  onNodeAddedOrModified(node: Node): void;
+  onNodeRemoved(node: Node): void;
+}
+
+export class ComponentTracker implements ITracker {
   public readonly components: Component[];
 
   constructor(
@@ -260,7 +265,7 @@ export class ComponentTracker {
     }
   }
 
-  onNodeRemoved(node: Node) {
+  onNodeRemoved(node: Node): void {
     let comp = this.findComponent(node);
     if (comp) {
       if (comp.idxInCompSystem >= 0) {
@@ -282,7 +287,7 @@ export class ComponentTracker {
   }
 
   private findComponent(node: Node): Component | null {
-    for (let [i, comp] of node.components) {
+    for (let [_, comp] of node.components) {
       if (comp instanceof this.compType) {
         if (this.componentFilter && !this.componentFilter(comp)) {
           continue;
