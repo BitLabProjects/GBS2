@@ -4,9 +4,9 @@ export class Texture {
   constructor(public readonly texture: WebGLTexture) {
   }
 
-  static createFromUrl(engine: Engine, url: string) {
+  static createFromUrl(engine: Engine, url: string, flip: boolean = true) {
     let gl = engine.gl;
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flip);
     const texture = gl.createTexture()!;
     gl.bindTexture(gl.TEXTURE_2D, texture);
   

@@ -32,6 +32,14 @@ export class UISystem extends EngineSystemWithTrackers {
   onComponentAdded = (comp: Component) => {
     //TODO Handle remove
     this.spriteCompsForUIRootComp.push([]);
+    this.spriteGeometryInstancesForUIRootComp.push(new GeometryInstances(this.engine, [
+          { name: "a_pos", length: 2 },
+          { name: "a_angle", length: 1 },
+          { name: "a_color", length: 4 },
+          { name: "a_scale", length: 2 },
+          { name: "a_texrect", length: 4 },
+        ])
+        );
   }
 
   spriteComponentFilter = (comp: Component): boolean => {
@@ -49,13 +57,6 @@ export class UISystem extends EngineSystemWithTrackers {
         ObjUtils.arrayRemoveReplacingWithLast(compsForUIRootComp, spriteComp);
       } else {
         compsForUIRootComp.push(spriteComp);
-        this.spriteGeometryInstancesForUIRootComp.push(new GeometryInstances(this.engine, [
-          { name: "a_pos", length: 2 },
-          { name: "a_angle", length: 1 },
-          { name: "a_color", length: 4 },
-          { name: "a_scale", length: 2 },
-        ])
-        );
       }
     }
   }
@@ -165,6 +166,10 @@ export class UISystem extends EngineSystemWithTrackers {
         instanceData[offset + 6] = spriteComp.color.a;
         instanceData[offset + 7] = transform.bounds.width;
         instanceData[offset + 8] = transform.bounds.height;
+        instanceData[offset + 9] = spriteComp.textureRect.x;
+        instanceData[offset + 10] = spriteComp.textureRect.y;
+        instanceData[offset + 11] = spriteComp.textureRect.width;
+        instanceData[offset + 12] = spriteComp.textureRect.height;
         offset += geometryInstances.entriesPerInstance;
       }
       geometryInstances.updateBuffer();
@@ -193,6 +198,7 @@ export class UIMaterial extends Material {
        in float a_angle;
        in vec4 a_color;
        in vec2 a_scale;
+       in vec4 a_texrect;
        
        // uniforms automatically filled by engine, if present
        uniform vec2 u_viewport;
@@ -229,7 +235,8 @@ export class UIMaterial extends Material {
    
          gl_Position = vec4(pos_Hcs, 0.0, 1.0);
          
-         v_uv = a_position;
+         vec2 texelSize = 1.0 / vec2(textureSize(uSampler, 0));
+         v_uv = a_texrect.xy * texelSize + a_position * a_texrect.zw * texelSize;
          v_color = a_color;
        }
       `,
@@ -244,6 +251,7 @@ export class UIMaterial extends Material {
 
        void main() {
          color = texture(uSampler, v_uv) * v_color;
+         //color = vec4(v_uv, 0.0, 1.0);
        }
       `);
   }
