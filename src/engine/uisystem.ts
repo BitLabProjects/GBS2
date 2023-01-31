@@ -122,8 +122,8 @@ export class UISystem extends EngineSystemWithTrackers {
     };
     let updateAndRender = (node: NodeUI, x: number, y: number, w: number, h: number) => {
       let transform = node.transform as TransformUI;
-      transform.bounds.x = x + calcCoordFromAlign(transform.width, w, transform.alignH);
-      transform.bounds.y = x + calcCoordFromAlign(transform.height, h, transform.alignV);
+      transform.bounds.x = x + calcCoordFromAlign(transform.width, w, transform.alignH) + transform.renderTransform.x;
+      transform.bounds.y = x + calcCoordFromAlign(transform.height, h, transform.alignV) + transform.renderTransform.y;
       transform.bounds.width = calcSizeFromAlign(transform.width, w, transform.alignH);
       transform.bounds.height = calcSizeFromAlign(transform.height, h, transform.alignV);
 

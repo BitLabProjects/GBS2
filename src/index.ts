@@ -1,5 +1,6 @@
 import { DefaultEventsSystem } from "./engine/defaultEventsSystem";
 import { Engine } from "./engine/engine";
+import { InputSystem } from "./engine/inputSystem";
 import { SpriteSystem } from "./engine/spritesystem";
 import { UISystem } from "./engine/uisystem";
 import { FlockingScene } from "./experiments/flocking/scene";
@@ -11,6 +12,7 @@ function launchExperiment(sceneFactory: (engine: Engine) => any) {
   document.body.innerHTML = "";
   let engine = Engine.createWithNewCanvas();
   engine.addSystem(new DefaultEventsSystem(engine));
+  engine.addSystem(new InputSystem(engine));
   engine.addSystem(new SpriteSystem(engine));
   engine.addSystem(new UISystem(engine));
   engine.init();

@@ -1,9 +1,9 @@
+import { Vect } from "../utils/vect";
 import { Geometry } from "./geometry";
 import { GeometryInstances } from "./geometryinstances";
 import { Material } from "./material";
 import { Node, Component } from "./node";
 import { Scene } from "./scene";
-import { SpriteSystem } from "./spritesystem";
 import { Texture } from "./texture";
 
 export class Engine {
@@ -13,6 +13,7 @@ export class Engine {
   private geometry: Geometry;
 
   private systems: EngineSystem[];
+  private inputSystem: IInputSystem | null;
   private changedNodes: Node[];
   private removedNodes: Node[];
 
@@ -41,12 +42,89 @@ export class Engine {
     setCanvasSizeFromWindow(canvas);
     document.body.appendChild(canvas);
 
+    const debugTxt = document.createElement("span");
+    debugTxt.style.position = "fixed";
+    debugTxt.style.left = "0px";
+    debugTxt.style.top = "0px";
+    document.body.appendChild(debugTxt);
+
     let engine = new Engine(canvas);
     // Attach the resize event here: a direct caller to Engine constructor might want to do differently
     window.onresize = (ev: UIEvent) => {
       setCanvasSizeFromWindow(canvas);
       engine.onResize();
     };
+
+    let touches: Touch[] = [];
+    let updateTouchSingle = (touch: Touch) => {
+      touches[touch.id] = touch;
+    }
+    let raiseInputSystemEventAndClean = () => {
+      if (engine.inputSystem) {
+        engine.inputSystem.onTouchUpdate(new TouchEventArgs(touches));
+      }
+      for(let [idx, touch] of touches.entries()) {
+        if (touch.state === TouchState.Release) {
+          delete touches[idx];
+        }
+      }
+    }
+    let updateTouchesFromMouseEvent = (ev: MouseEvent, state: TouchState) => {
+      updateTouchSingle(new Touch(100, TouchDeviceKind.Mouse, state, new Vect(ev.x, ev.y)))
+      raiseInputSystemEventAndClean();
+    }
+    let updateTouchesFromTouchEvent = (ev: TouchEvent) => {
+      let updatedTouches = [];
+      for(let evtouch of ev.touches) {
+        updatedTouches[evtouch.identifier] = true;
+        if (!touches[evtouch.identifier]) {
+          // New touch
+          updateTouchSingle(new Touch(evtouch.identifier, TouchDeviceKind.Finger, TouchState.Press, new Vect(evtouch.clientX, evtouch.clientY)));
+        } else {
+          updateTouchSingle(new Touch(evtouch.identifier, TouchDeviceKind.Finger, TouchState.Update, new Vect(evtouch.clientX, evtouch.clientY)));
+        }
+      }
+
+      // Remove touches no longer available
+      for(let touch of touches) {
+        if (touch.deviceKind === TouchDeviceKind.Finger) {
+          if (!updatedTouches[touch.id]) {
+            updateTouchSingle(new Touch(touch.id, TouchDeviceKind.Finger, TouchState.Release, touch.pos.clone()));
+          }
+        }
+      }
+      raiseInputSystemEventAndClean();
+    }
+
+    canvas.onmousedown = (ev) => {
+      ev.preventDefault();
+      updateTouchesFromMouseEvent(ev, TouchState.Press);
+    }
+
+    canvas.onmousemove = (ev) => {
+      ev.preventDefault();
+      updateTouchesFromMouseEvent(ev, TouchState.Update);
+    }
+
+    canvas.onmouseup = (ev) => {
+      ev.preventDefault();
+      updateTouchesFromMouseEvent(ev, TouchState.Release);
+    }
+
+    canvas.ontouchstart = (ev: TouchEvent) => {
+      ev.preventDefault();
+      updateTouchesFromTouchEvent(ev);
+    }
+
+    canvas.ontouchmove = (ev: TouchEvent) => {
+      ev.preventDefault();
+      updateTouchesFromTouchEvent(ev);
+    }
+
+    canvas.ontouchend = (ev: TouchEvent) => {
+      ev.preventDefault();
+      updateTouchesFromTouchEvent(ev);
+    }
 
     return engine;
   }
@@ -65,6 +143,10 @@ export class Engine {
 
   addSystem(system: EngineSystem) {
     this.systems.push(system);
+    // Use onTouchUpdate as sentinel for interface implementation
+    if ((<any>system).onTouchUpdate) {
+      this.inputSystem = system as any as IInputSystem;
+    }
   }
 
   public init() {
@@ -218,6 +300,37 @@ export class Engine {
         offset += length;
       }
     }
+  }
+}
+
+export interface IInputSystem {
+  onTouchUpdate(tea: TouchEventArgs): void;
+}
+
+export enum TouchDeviceKind {
+  Mouse,
+  Finger
+}
+export enum TouchState {
+  Press,
+  Update,
+  Release
+}
+export class Touch {
+  constructor(
+    public readonly id: number,
+    public readonly deviceKind: TouchDeviceKind,
+    public readonly state: TouchState,
+    public readonly pos: Vect) { }
+}
+export class TouchEventArgs {
+  constructor(public readonly touches: Touch[]) { }
+
+  public getTouchById(id: number): Touch | null {
+    for(let touch of this.touches) {
+      if (touch.id === id) return touch;
+    }
+    return null;
   }
 }
 

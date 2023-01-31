@@ -1,4 +1,5 @@
 import { Rect } from "../utils/rect";
+import { Vect } from "../utils/vect";
 import { Scene } from "./scene";
 
 export class Component {
@@ -24,9 +25,9 @@ export interface Transform {
 export class Transform2D implements Transform {
   constructor(
     public x: number,
-    public y: number, 
-    public angle: number, 
-    public scaleX: number, 
+    public y: number,
+    public angle: number,
+    public scaleX: number,
     public scaleY: number) {
   }
 
@@ -37,22 +38,23 @@ export class Transform2D implements Transform {
 
 export enum Align {
   Begin,
-  Middle, 
+  Middle,
   End,
   Stretch,
 }
 export class TransformUI implements Transform {
   public bounds: Rect;
   constructor(
-    public width: number, 
+    public width: number,
     public height: number,
     public alignH: Align,
-    public alignV: Align) {
+    public alignV: Align,
+    public renderTransform: Vect) {
     this.bounds = new Rect(0, 0, 0, 0);
   }
 
   static default(): TransformUI {
-    return new TransformUI(-1, -1, Align.Stretch, Align.Stretch);
+    return new TransformUI(-1, -1, Align.Stretch, Align.Stretch, new Vect(0, 0));
   }
 }
 
@@ -63,9 +65,9 @@ export class Node {
   private _parent: Node | null;
   private _children: Node[];
 
-  constructor(public readonly scene: Scene, 
-              transform: Transform,
-              parent?: Node) {
+  constructor(public readonly scene: Scene,
+    transform: Transform,
+    parent?: Node) {
     this.id = scene.engine.genNodeID();
     scene.addNode(this); // TODO Review subscription and invalidation point for systems
     this._components = [];
@@ -103,7 +105,7 @@ export class Node {
   }
 
   public getComponent(type: any): any {
-    for(let c of this._components) {
+    for (let c of this._components) {
       if (c instanceof type) {
         return c;
       }
@@ -114,8 +116,8 @@ export class Node {
 
 export class Node2D extends Node {
   constructor(public readonly scene: Scene,
-              transform: Transform2D,
-              parent?: Node2D) {
+    transform: Transform2D,
+    parent?: Node2D) {
     super(scene, transform, parent);
   }
 
@@ -136,8 +138,8 @@ export class Node2D extends Node {
 
 export class NodeUI extends Node {
   constructor(public readonly scene: Scene,
-              transform: TransformUI,
-              parent?: NodeUI) {
+    transform: TransformUI,
+    parent?: NodeUI) {
     super(scene, transform, parent);
   }
 
