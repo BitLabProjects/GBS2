@@ -6,6 +6,7 @@ export class DefaultEventsSystem extends EngineSystemWithTrackers {
   constructor(engine: Engine) {
     super(engine);
     this.addTracker(new ComponentTracker(
+      engine.genTrackerId(),
       Component,
       this.componentFilter,
       this.onComponentAdded));

@@ -6,6 +6,7 @@ export class InputSystem extends EngineSystemWithTrackers implements IInputSyste
   constructor(engine: Engine) {
     super(engine);
     this.addTracker(new ComponentTracker(
+      engine.genTrackerId(),
       Component,
       this.componentFilter));
   }

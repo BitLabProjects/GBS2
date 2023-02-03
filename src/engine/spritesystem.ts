@@ -9,10 +9,12 @@ import { Texture } from "./texture";
 export class SpriteSystem extends EngineSystemWithTrackers {
   constructor(engine: Engine) {
     super(engine);
-    this.addTracker(new ComponentTracker(SpriteComp, 
-                    this.componentFilter, 
-                    undefined, 
-                    this.onComponentChangedOrRemoved));
+    this.addTracker(new ComponentTracker(
+      engine.genTrackerId(),
+      SpriteComp,
+      this.componentFilter,
+      undefined,
+      this.onComponentChangedOrRemoved));
 
     this.material = new SpriteMaterial(engine);
     this.textures = []

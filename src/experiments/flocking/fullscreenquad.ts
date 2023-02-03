@@ -154,6 +154,7 @@ export class FullScreenQuad extends Component {
     const posLocation = gl.getAttribLocation(this.material.maybeCreate(), "a_position");
     gl.vertexAttribPointer(posLocation, 2, gl.FLOAT, false, 2 * 4, 0);
     gl.enableVertexAttribArray(posLocation);
+    gl.vertexAttribDivisor(posLocation, 0);
 
     this.elementBuffer = gl.createBuffer()!;
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.elementBuffer);
@@ -165,9 +166,8 @@ export class FullScreenQuad extends Component {
 
     let gl = this.scene.engine.gl;
 
-    this.bindBuffers(gl);
-
     this.scene.engine.useMaterial(this.material);
+    this.bindBuffers(gl);
     gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
   }
 

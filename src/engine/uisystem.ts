@@ -12,8 +12,12 @@ export class UISystem extends EngineSystemWithTrackers {
   constructor(engine: Engine) {
     super(engine);
     this.addTracker(new ComponentTracker(
-      UIRootComp, undefined, this.onComponentAdded));
+      engine.genTrackerId(),
+      UIRootComp, 
+      undefined, 
+      this.onComponentAdded));
     this.addTracker(new ComponentTracker(
+      engine.genTrackerId(),
       SpriteComp,
       this.spriteComponentFilter,
       undefined,
@@ -52,7 +56,8 @@ export class UISystem extends EngineSystemWithTrackers {
     // Add/Remove to/from its UIRootComp
     let uiRootComp = this.findUIRootComp(comp);
     if (uiRootComp) {
-      let compsForUIRootComp = this.spriteCompsForUIRootComp[uiRootComp.idxInCompSystem];
+      let idxForTracker = uiRootComp.getCompIdxForTracker(this.trackers[0].trackerId);
+      let compsForUIRootComp = this.spriteCompsForUIRootComp[idxForTracker];
       if (isDelete) {
         ObjUtils.arrayRemoveReplacingWithLast(compsForUIRootComp, spriteComp);
       } else {

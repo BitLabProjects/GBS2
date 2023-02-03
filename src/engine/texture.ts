@@ -6,7 +6,6 @@ export class Texture {
 
   static createFromUrl(engine: Engine, url: string, flip: boolean = true) {
     let gl = engine.gl;
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flip);
     const texture = gl.createTexture()!;
     gl.bindTexture(gl.TEXTURE_2D, texture);
   
@@ -38,6 +37,7 @@ export class Texture {
     const image = new Image();
     image.onload = () => {
       gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flip);
       gl.texImage2D(
         gl.TEXTURE_2D,
         level,

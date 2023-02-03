@@ -5,6 +5,7 @@ import { Material } from "./material";
 import { Node, Component } from "./node";
 import { Scene } from "./scene";
 import { Texture } from "./texture";
+var SPECTOR = require("spectorjs");
 
 export class Engine {
   public readonly gl: WebGL2RenderingContext;
@@ -19,12 +20,14 @@ export class Engine {
 
   public scene: Scene;
   private lastNodeID: number;
+  private lastTrackerID: number;
 
   private time: number;
 
   constructor(public readonly canvas: HTMLCanvasElement) {
     this.gl = canvas.getContext("webgl2", { antialias: false })!;
     this.lastNodeID = 0;
+    this.lastTrackerID = 0;
     this.systems = [];
     this.changedNodes = [];
     this.removedNodes = [];
@@ -61,11 +64,15 @@ export class Engine {
     }
     let raiseInputSystemEventAndClean = () => {
       if (engine.inputSystem) {
-        engine.inputSystem.onTouchUpdate(new TouchEventArgs(touches));
+        let t: Touch[] = [];
+        for(let key in touches) {
+          t.push(touches[key]);
+        }
+        engine.inputSystem.onTouchUpdate(new TouchEventArgs(t));
       }
-      for(let [idx, touch] of touches.entries()) {
-        if (touch.state === TouchState.Release) {
-          delete touches[idx];
+      for(let key in touches) {
+        if (touches[key].state === TouchState.Release) {
+          delete touches[key];
         }
       }
     }
@@ -86,7 +93,8 @@ export class Engine {
       }
 
       // Remove touches no longer available
-      for(let touch of touches) {
+      for(let key in touches) {
+        let touch = touches[key];
         if (touch.deviceKind === TouchDeviceKind.Finger) {
           if (!updatedTouches[touch.id]) {
             updateTouchSingle(new Touch(touch.id, TouchDeviceKind.Finger, TouchState.Release, touch.pos.clone()));
@@ -141,6 +149,10 @@ export class Engine {
     return this.lastNodeID;
   }
 
+  public genTrackerId(): number {
+    this.lastTrackerID += 1;
+    return this.lastTrackerID;
+  }
   addSystem(system: EngineSystem) {
     this.systems.push(system);
     // Use onTouchUpdate as sentinel for interface implementation
@@ -169,6 +181,9 @@ export class Engine {
     for (let system of this.systems) {
       system.onCreate();
     }
+
+    //var spector = new SPECTOR.Spector();
+    //spector.displayUI();
 
     // for(let node of this.scene.nodes) {
     //   for(let system of this.systems) {
@@ -216,7 +231,7 @@ export class Engine {
       // Request anyway
       requestAnimationFrame(onAnimationFrame);
     }
-    onAnimationFrame();
+    requestAnimationFrame(onAnimationFrame);
   }
 
   public addChangedNode(node: Node) {
@@ -283,6 +298,7 @@ export class Engine {
     const posLocation = this.gl.getAttribLocation(this.materialShaderProgram, "a_position");
     this.gl.vertexAttribPointer(posLocation, 2, this.gl.FLOAT, false, 2 * 4, 0);
     this.gl.enableVertexAttribArray(posLocation);
+    this.gl.vertexAttribDivisor(posLocation, 0);
 
     this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, geometry.elementBuffer);
 
@@ -304,6 +320,10 @@ export class Engine {
 }
 
 export interface IInputSystem {
+  onTouchUpdate(tea: TouchEventArgs): void;
+}
+
+export interface IInputHandler {
   onTouchUpdate(tea: TouchEventArgs): void;
 }
 
@@ -352,6 +372,7 @@ export class ComponentTracker implements ITracker {
   public readonly components: Component[];
 
   constructor(
+    public readonly trackerId: number,
     private readonly compType: any,
     private readonly componentFilter?: (comp: Component) => boolean,
     private readonly onComponentAdded?: (comp: Component) => void,
@@ -365,9 +386,10 @@ export class ComponentTracker implements ITracker {
     // Search specific component
     let comp = this.findComponent(node);
     if (comp) {
-      if (comp.idxInCompSystem < 0) {
+      let idxForTracker = comp.getCompIdxForTracker(this.trackerId);
+      if (idxForTracker < 0) {
         this.components.push(comp);
-        comp.idxInCompSystem = this.components.length - 1;
+        comp.setCompIdxForTracker(this.trackerId, this.components.length - 1);
         if (this.onComponentAdded) {
           this.onComponentAdded(comp);
         }
@@ -381,17 +403,18 @@ export class ComponentTracker implements ITracker {
   onNodeRemoved(node: Node): void {
     let comp = this.findComponent(node);
     if (comp) {
-      if (comp.idxInCompSystem >= 0) {
+      let idxForTracker = comp.getCompIdxForTracker(this.trackerId);
+      if (idxForTracker >= 0) {
         // Remove entry from array without scaling
         // TODO maybe moving the last here and changing its pointer is better?
         // If the removed component is not the last, replace it with the last relinking its index
-        if (comp.idxInCompSystem < this.components.length - 1) {
+        if (idxForTracker < this.components.length - 1) {
           let replaceComp = this.components[this.components.length - 1];
-          replaceComp.idxInCompSystem = comp.idxInCompSystem;
-          this.components[replaceComp.idxInCompSystem] = replaceComp;
+          replaceComp.setCompIdxForTracker(this.trackerId, idxForTracker);
+          this.components[idxForTracker] = replaceComp;
         }
         this.components.length -= 1;
-        comp.idxInCompSystem = -1;
+        comp.setCompIdxForTracker(this.trackerId, -1);
         if (this.onComponentChangedOrRemoved) {
           this.onComponentChangedOrRemoved(comp, true);
         }

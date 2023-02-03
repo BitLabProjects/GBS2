@@ -3,15 +3,28 @@ import { Vect } from "../utils/vect";
 import { Scene } from "./scene";
 
 export class Component {
-  public idxInCompSystem: number;
+  private compIdxForTracker: number[];
   public node: Node | null;
   constructor() {
-    this.idxInCompSystem = -1;
+    this.compIdxForTracker = [];
     this.node = null;
   }
 
   public get scene(): Scene {
     return this.node!.scene;
+  }
+
+  public getCompIdxForTracker(trackerId: number): number {
+    let idx = this.compIdxForTracker[trackerId];
+    if (idx === undefined) idx = -1;
+    return idx;
+  }
+  public setCompIdxForTracker(trackerId: number, value: number): void {
+    if (value < 0) {
+      delete this.compIdxForTracker[trackerId];
+    } else {
+      this.compIdxForTracker[trackerId] = value;
+    }
   }
 
   // define on derived classes and it will be called by the StandardEventsSystem

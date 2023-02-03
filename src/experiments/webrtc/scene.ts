@@ -1,8 +1,9 @@
 import { Engine } from "../../engine/engine";
-import { Node, Transform2D } from "../../engine/node";
+import { Node, NodeUI, Transform2D } from "../../engine/node";
 import { Scene } from "../../engine/scene";
 import { SpriteComp } from "../../engine/spritecomp";
 import { Texture } from "../../engine/texture";
+import { UIRootComp } from "../../engine/uirootcomp";
 import { DefaultInput } from "../../net/defaultinput";
 import { Game } from "../../net/game";
 import { RollbackWrapper } from "../../net/rollbackwrapper";
@@ -10,6 +11,7 @@ import { TouchControl, VirtualJoystick } from "../../net/touchcontrols";
 import { NetplayPlayer, SerializedState } from "../../net/types";
 import { clone } from "../../net/utils";
 import { FullScreenQuad } from "../flocking/fullscreenquad";
+import { JoystickComp } from "./joystickcomp";
 //import { JoystickComp } from "./JoystickComp";
 
 export class WebRTCSceneHost extends Scene {
@@ -71,9 +73,10 @@ class SimpleGame extends Game {
 
   private state: GameState;
 
-  private virtualJoystick1: VirtualJoystick;
-  private virtualJoystick2: VirtualJoystick;
-  touchControls: { [name: string]: TouchControl };
+  //private virtualJoystick1: JoystickComp;
+  //private virtualJoystick2: JoystickComp;
+
+  private nodeRootUI: NodeUI;
 
   private readonly maxLife: number = 10;
 
@@ -94,11 +97,12 @@ class SimpleGame extends Game {
 
     this.draw();
 
-    this.virtualJoystick1 = new VirtualJoystick();
-    this.virtualJoystick2 = new VirtualJoystick(true);
-    this.touchControls = { 'joystick1': this.virtualJoystick1, 'joystick2': this.virtualJoystick2 };
+    //this.virtualJoystick1 = new VirtualJoystick();
+    //this.virtualJoystick2 = new VirtualJoystick(true);
+    //this.touchControls = { 'joystick1': this.virtualJoystick1, 'joystick2': this.virtualJoystick2 };
 
-    //Node.createFromComp(this.scene, new JoystickComp(false));
+    this.nodeRootUI = NodeUI.createFromComp(scene, new UIRootComp());
+    NodeUI.createFromComp(this.scene, new JoystickComp(), this.nodeRootUI);
   }
 
   serialize(): SerializedState {
@@ -127,11 +131,11 @@ class SimpleGame extends Game {
         x:
           (input.isPressed("ArrowLeft") ? -1 : 0) +
           (input.isPressed("ArrowRight") ? 1 : 0) +
-          (input.touchControls!.joystick1.x),
+          0, //(input.touchControls!.joystick1.x),
         y:
           (input.isPressed("ArrowDown") ? -1 : 0) +
           (input.isPressed("ArrowUp") ? 1 : 0) +
-          (input.touchControls!.joystick1.y),
+          0, //(input.touchControls!.joystick1.y),
       };
 
 
@@ -151,7 +155,7 @@ class SimpleGame extends Game {
       if (unitState.coolDown > 0) {
         unitState.coolDown -= deltaTime;
       } else {
-        if (input.isPressed(" ") || input.touchControls!.joystick2.x !== 0 || input.touchControls!.joystick2.y !== 0) {
+        if (input.isPressed(" ") /*|| input.touchControls!.joystick2.x !== 0 || input.touchControls!.joystick2.y !== 0*/) {
           // Fire
           this.state.projectiles.push(new ProjectileState(unitState.x + unitState.xDir * 10,
             unitState.y + unitState.yDir * 10,
