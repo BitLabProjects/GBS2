@@ -9,14 +9,19 @@ import { Vect } from "../../utils/vect";
 export class JoystickComp extends Component implements IInputHandler {
   joystickCircle: NodeUI;
   touchDragHandler: TouchDragHandler;
+  dx: number = 0;
+  dy: number = 0;
 
   constructor() {
     super();
     this.touchDragHandler = new TouchDragHandler(
       (point: Vect) => (this.node! as NodeUI).transformUI.bounds.isInside(point),
       (point: Vect, delta: Vect) => {
-        this.joystickCircle.transformUI.renderTransform = delta.clone();
-        this.joystickCircle.transformUI.renderTransform.clampLength(40);
+        delta = delta.clone();
+        delta.clampLength(40);
+        this.joystickCircle.transformUI.renderTransform = delta;
+        this.dx = +delta.x / delta.length;
+        this.dy = -delta.y / delta.length;
       });
   }
 
@@ -38,6 +43,8 @@ export class JoystickComp extends Component implements IInputHandler {
   onUpdate() {
     if (!this.touchDragHandler.isDragging) {
       this.joystickCircle.transformUI.renderTransform.scale(0.9);
+      this.dx = 0;
+      this.dy = 0;
     }
   }
 

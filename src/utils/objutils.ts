@@ -9,4 +9,8 @@ export class ObjUtils {
       array.length -= 1;
     }
   }
+
+  public static clone(object: any): any {
+    return JSON.parse(JSON.stringify(object));
+  }
 }

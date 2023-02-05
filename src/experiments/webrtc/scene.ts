@@ -1,4 +1,4 @@
-import { Engine } from "../../engine/engine";
+import { Engine, IInputHandler, KeyEventArgs, TouchEventArgs } from "../../engine/engine";
 import { Component, Node, NodeUI, Transform2D } from "../../engine/node";
 import { Scene } from "../../engine/scene";
 import { SpriteComp } from "../../engine/spritecomp";
@@ -10,6 +10,7 @@ import { RollbackWrapper } from "../../net/rollbackwrapper";
 import { TouchControl, VirtualJoystick } from "../../net/touchcontrols";
 import { NetplayPlayer, SerializedState } from "../../net/types";
 import { clone } from "../../net/utils";
+import { ObjUtils } from "../../utils/objutils";
 import { FullScreenQuad } from "../flocking/fullscreenquad";
 import { JoystickComp } from "./joystickcomp";
 //import { JoystickComp } from "./JoystickComp";
@@ -66,7 +67,7 @@ class DeadUnitState {
   constructor(public playerId: number, public x: number, public y: number, public fadeTime: number) { }
 }
 
-class SimpleGame extends Component implements Game<DefaultInput> {
+class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler {
   timestep: number = 1000 / 60;
   deterministic: boolean = true;
 
@@ -76,12 +77,12 @@ class SimpleGame extends Component implements Game<DefaultInput> {
   private unitTextures: Texture[];
   private projectileTexture: Texture;
 
+  keys: { [key: string]: KeyState } = {};
+
   private state: GameState;
 
-  //private virtualJoystick1: JoystickComp;
-  //private virtualJoystick2: JoystickComp;
-
   private nodeRootUI: NodeUI;
+  private joystickComp: JoystickComp;
 
   private readonly maxLife: number = 10;
 
@@ -101,18 +102,16 @@ class SimpleGame extends Component implements Game<DefaultInput> {
 
     this.draw();
 
-    //this.virtualJoystick1 = new VirtualJoystick();
-    //this.virtualJoystick2 = new VirtualJoystick(true);
-    //this.touchControls = { 'joystick1': this.virtualJoystick1, 'joystick2': this.virtualJoystick2 };
-
     // TODO Show touch controls only on mobile
     // if (window.navigator.userAgent.toLowerCase().includes("mobile")) ...
     this.nodeRootUI = NodeUI.createFromComp(this.scene, new UIRootComp());
-    NodeUI.createFromComp(this.scene, new JoystickComp(), this.nodeRootUI);
+
+    this.joystickComp = new JoystickComp();
+    NodeUI.createFromComp(this.scene, this.joystickComp, this.nodeRootUI);
   }
 
   onUpdate() {
-    
+
   }
 
   serialize(): SerializedState {
@@ -130,11 +129,26 @@ class SimpleGame extends Component implements Game<DefaultInput> {
   }
 
   getInput(): DefaultInput {
-    let input = new DefaultInput();
+    let input = this.getStartInput();
+    for(let key in this.keys) {
+      input.pressed[key] = this.keys[key];
+    }
+    input.touchControls = {};
+    input.touchControls["joystick1"] = { x: this.joystickComp.dx, y: this.joystickComp.dy};
     return input;
   }
   getStartInput(): DefaultInput {
-    return new DefaultInput();
+    let input = new DefaultInput();
+    input.touchControls = {};
+    input.touchControls["joystick1"] = { x: 0, y: 0};
+    return input;
+  }
+
+  onTouchUpdate(tea: TouchEventArgs): void {
+  }
+  
+  onKeyUpdate(kea: KeyEventArgs): void {
+    this.keys = ObjUtils.clone(kea.keys);
   }
 
   // The tick function takes a map of Player -> Input and
@@ -149,11 +163,11 @@ class SimpleGame extends Component implements Game<DefaultInput> {
         x:
           (input.isPressed("ArrowLeft") ? -1 : 0) +
           (input.isPressed("ArrowRight") ? 1 : 0) +
-          0, //(input.touchControls!.joystick1.x),
+          (input.touchControls!.joystick1.x),
         y:
           (input.isPressed("ArrowDown") ? -1 : 0) +
           (input.isPressed("ArrowUp") ? 1 : 0) +
-          0, //(input.touchControls!.joystick1.y),
+          (input.touchControls!.joystick1.y),
       };
 
 

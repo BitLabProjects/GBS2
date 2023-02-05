@@ -105,31 +105,37 @@ export class Engine {
     }
 
     canvas.onmousedown = (ev) => {
+      canvas.focus();
       ev.preventDefault();
       updateTouchesFromMouseEvent(ev, TouchState.Press);
     }
 
     canvas.onmousemove = (ev) => {
+      canvas.focus();
       ev.preventDefault();
       updateTouchesFromMouseEvent(ev, TouchState.Update);
     }
 
     canvas.onmouseup = (ev) => {
+      canvas.focus();
       ev.preventDefault();
       updateTouchesFromMouseEvent(ev, TouchState.Release);
     }
 
     canvas.ontouchstart = (ev: TouchEvent) => {
+      canvas.focus();
       ev.preventDefault();
       updateTouchesFromTouchEvent(ev);
     }
 
     canvas.ontouchmove = (ev: TouchEvent) => {
+      canvas.focus();
       ev.preventDefault();
       updateTouchesFromTouchEvent(ev);
     }
 
     canvas.ontouchend = (ev: TouchEvent) => {
+      canvas.focus();
       ev.preventDefault();
       updateTouchesFromTouchEvent(ev);
     }
@@ -157,11 +163,11 @@ export class Engine {
         }
       }
     }
-    canvas.onkeydown = (ev: KeyboardEvent) => {
+    document.onkeydown = (ev: KeyboardEvent) => {
       ev.preventDefault();
       updateKeysFromKeyboardEvent(ev, KeyState.JustPressed);
     };
-    canvas.onkeyup = (ev: KeyboardEvent) => {
+    document.onkeyup = (ev: KeyboardEvent) => {
       ev.preventDefault();
       updateKeysFromKeyboardEvent(ev, KeyState.JustReleased);
     };
@@ -396,7 +402,7 @@ export enum KeyState {
 }
 
 export class KeyEventArgs {
-  constructor(public readonly pressed: { [key: string]: KeyState }) { }
+  constructor(public readonly keys: { [key: string]: KeyState }) { }
 }
 
 export abstract class EngineSystem {
