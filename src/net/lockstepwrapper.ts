@@ -1,21 +1,20 @@
 import * as Peer from "peerjs";
-import { DefaultInput, DefaultInputReader } from "./defaultinput";
 import StatCounter from "../utils/statcounter";
 import { LockstepNetcode } from "./netcode/lockstep";
-import { NetplayPlayer, NetplayState } from "./types";
+import { NetplayInput, NetplayPlayer, NetplayState } from "./types";
 
 import * as log from "loglevel";
 import { GameWrapper } from "./gamewrapper";
-import { Game, GameClass } from "./game";
+import { Game } from "./game";
 
 const PING_INTERVAL = 100;
 
-export class LockstepWrapper extends GameWrapper {
+export class LockstepWrapper<TInput extends NetplayInput<TInput>> extends GameWrapper<TInput> {
   pingMeasure: StatCounter = new StatCounter(0.2);
-  game: Game;
-  lockstepNetcode?: LockstepNetcode<Game, DefaultInput>;
+  game: Game<TInput>;
+  lockstepNetcode?: LockstepNetcode<Game<TInput>, TInput>;
 
-  constructor(game: Game, canvas: HTMLCanvasElement) {
+  constructor(game: Game<TInput>, canvas: HTMLCanvasElement) {
     super(game, canvas);
   }
 
@@ -35,7 +34,7 @@ export class LockstepWrapper extends GameWrapper {
       players,
       this.game.timestep,
       this.getStateSyncPeriod(),
-      () => this.inputReader.getInput(),
+      () => this.game.getInput(),
       (frame, input) => {
         conn.send({ type: "input", frame: frame, input: input.serialize() });
       },
@@ -46,7 +45,7 @@ export class LockstepWrapper extends GameWrapper {
 
     conn.on("data", (data: any) => {
       if (data.type === "input") {
-        let input = new DefaultInput();
+        let input = this.game.getStartInput();
         input.deserialize(data.input);
 
         this.lockstepNetcode!.onRemoteInput(data.frame, players![1], input);
@@ -78,7 +77,7 @@ export class LockstepWrapper extends GameWrapper {
       players,
       this.game.timestep,
       this.getStateSyncPeriod(),
-      () => this.inputReader.getInput(),
+      () => this.game.getInput(),
       (frame, input) => {
         conn.send({ type: "input", frame: frame, input: input.serialize() });
       }
@@ -86,7 +85,7 @@ export class LockstepWrapper extends GameWrapper {
 
     conn.on("data", (data: any) => {
       if (data.type === "input") {
-        let input = new DefaultInput();
+        let input = this.game.getStartInput();
         input.deserialize(data.input);
 
         this.lockstepNetcode!.onRemoteInput(data.frame, players![0], input);

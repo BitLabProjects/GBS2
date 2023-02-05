@@ -2,7 +2,7 @@ import { NetplayInput } from "./types";
 import * as utils from "./utils";
 import { TouchControl } from "./touchcontrols";
 
-enum KeyState {
+export enum KeyState {
   Released = 0,
   Pressed = 1,
   JustPressed = 2,

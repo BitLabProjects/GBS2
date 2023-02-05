@@ -1,10 +1,10 @@
 import { Engine } from "../../engine/engine";
-import { Node, NodeUI, Transform2D } from "../../engine/node";
+import { Component, Node, NodeUI, Transform2D } from "../../engine/node";
 import { Scene } from "../../engine/scene";
 import { SpriteComp } from "../../engine/spritecomp";
 import { Texture } from "../../engine/texture";
 import { UIRootComp } from "../../engine/uirootcomp";
-import { DefaultInput } from "../../net/defaultinput";
+import { DefaultInput, KeyState } from "../../net/defaultinput";
 import { Game } from "../../net/game";
 import { RollbackWrapper } from "../../net/rollbackwrapper";
 import { TouchControl, VirtualJoystick } from "../../net/touchcontrols";
@@ -19,7 +19,9 @@ export class WebRTCSceneHost extends Scene {
     super(engine);
 
     Node.createFromComp(this, new FullScreenQuad());
-    new RollbackWrapper(new SimpleGame(this), engine.canvas).start(roomName, false);
+    let gameComponent = new SimpleGame();
+    Node.createFromComp(this, gameComponent);
+    new RollbackWrapper(gameComponent, engine.canvas).start(roomName, false);
   }
 }
 
@@ -28,7 +30,9 @@ export class WebRTCScene extends Scene {
     super(engine);
 
     Node.createFromComp(this, new FullScreenQuad());
-    new RollbackWrapper(new SimpleGame(this), engine.canvas).start(roomName, true);
+    let gameComponent = new SimpleGame();
+    Node.createFromComp(this, gameComponent);
+    new RollbackWrapper(gameComponent, engine.canvas).start(roomName, true);
   }
 }
 
@@ -62,8 +66,9 @@ class DeadUnitState {
   constructor(public playerId: number, public x: number, public y: number, public fadeTime: number) { }
 }
 
-class SimpleGame extends Game {
-  public static timestep = 1000 / 60; // Our game runs at 60 FPS;
+class SimpleGame extends Component implements Game<DefaultInput> {
+  timestep: number = 1000 / 60;
+  deterministic: boolean = true;
 
   private unitSprites: SpriteComp[];
   private projectileSprites: SpriteComp[];
@@ -80,8 +85,7 @@ class SimpleGame extends Game {
 
   private readonly maxLife: number = 10;
 
-  constructor(private scene: Scene) {
-    super();
+  onCreate() {
     this.state = new GameState();
     this.state.units.push(new UnitState(-150, 0, 0, 0, 1, 0, this.maxLife, 0, 0));
     this.state.units.push(new UnitState(+150, 0, 0, 0, 1, 0, this.maxLife, 0, 0));
@@ -101,8 +105,14 @@ class SimpleGame extends Game {
     //this.virtualJoystick2 = new VirtualJoystick(true);
     //this.touchControls = { 'joystick1': this.virtualJoystick1, 'joystick2': this.virtualJoystick2 };
 
-    this.nodeRootUI = NodeUI.createFromComp(scene, new UIRootComp());
+    // TODO Show touch controls only on mobile
+    // if (window.navigator.userAgent.toLowerCase().includes("mobile")) ...
+    this.nodeRootUI = NodeUI.createFromComp(this.scene, new UIRootComp());
     NodeUI.createFromComp(this.scene, new JoystickComp(), this.nodeRootUI);
+  }
+
+  onUpdate() {
+    
   }
 
   serialize(): SerializedState {
@@ -117,6 +127,14 @@ class SimpleGame extends Game {
   }
 
   init(players: NetplayPlayer[]): void {
+  }
+
+  getInput(): DefaultInput {
+    let input = new DefaultInput();
+    return input;
+  }
+  getStartInput(): DefaultInput {
+    return new DefaultInput();
   }
 
   // The tick function takes a map of Player -> Input and

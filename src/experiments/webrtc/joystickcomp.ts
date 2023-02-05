@@ -1,4 +1,4 @@
-import { IInputHandler, TouchEventArgs } from "../../engine/engine";
+import { IInputHandler, KeyEventArgs, TouchEventArgs } from "../../engine/engine";
 import { Align, Component, NodeUI, TransformUI } from "../../engine/node";
 import { SpriteComp } from "../../engine/spritecomp";
 import { Texture } from "../../engine/texture";
@@ -43,5 +43,9 @@ export class JoystickComp extends Component implements IInputHandler {
 
   onTouchUpdate(tea: TouchEventArgs): void {
     this.touchDragHandler.onTouchUpdate(tea);
+  }
+
+  onKeyUpdate(kea: KeyEventArgs): void {
+    //
   }
 }

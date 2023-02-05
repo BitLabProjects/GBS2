@@ -1,5 +1,5 @@
 import { DefaultInputReader } from "./defaultinput";
-import { NetplayPlayer } from "./types";
+import { NetplayInput, NetplayPlayer } from "./types";
 
 import * as log from "loglevel";
 import { Game } from "./game";
@@ -9,8 +9,8 @@ import * as QRCode from "qrcode";
 import * as queryString from "query-string";
 import * as getUuidByString from 'uuid-by-string'
 
-export abstract class GameWrapper {
-  game: Game;
+export abstract class GameWrapper<TInput extends NetplayInput<TInput>> {
+  game: Game<TInput>;
 
   /** The network stats UI. */
   stats: HTMLDivElement;
@@ -18,9 +18,7 @@ export abstract class GameWrapper {
   /** The floating menu used to select a match. */
   menu: HTMLDivElement;
 
-  inputReader: DefaultInputReader;
-
-  constructor(game: Game,
+  constructor(game: Game<TInput>,
     canvas: HTMLCanvasElement) {
     this.game = game;
 
@@ -47,23 +45,6 @@ export abstract class GameWrapper {
     this.menu.style.transform = "translate(0%, 0%)";
 
     document.body.appendChild(this.menu);
-
-    if (
-      this.game.touchControls &&
-      window.navigator.userAgent.toLowerCase().includes("mobile")
-    ) {
-      for (let [_, control] of Object.entries(
-        this.game.touchControls
-      )) {
-        control.show();
-      }
-    }
-
-    this.inputReader = new DefaultInputReader(
-      canvas,
-      this.game.pointerLock || false,
-      this.game.touchControls || {}
-    );
   }
 
   peer?: Peer.Peer;

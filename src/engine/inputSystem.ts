@@ -1,5 +1,5 @@
 import { Vect } from "../utils/vect";
-import { ComponentTracker, Engine, EngineSystemWithTrackers, IInputSystem, TouchEventArgs } from "./engine";
+import { ComponentTracker, Engine, EngineSystemWithTrackers, IInputSystem, KeyEventArgs, TouchEventArgs } from "./engine";
 import { Component } from "./node";
 
 export class InputSystem extends EngineSystemWithTrackers implements IInputSystem {
@@ -13,22 +13,27 @@ export class InputSystem extends EngineSystemWithTrackers implements IInputSyste
 
   componentFilter = (comp: Component) => {
     // The component is valid if it defines any input event
-    return !!((<any>comp).onTouchUpdate);
+    return !!((<any>comp).onTouchUpdate) || !!((<any>comp).onKeyUpdate);
   }
 
   onCreate(): void {
   }
 
   onUpdate(deltaTime: number): void {
-    //for (let comp of this.trackers[0].components) {
-    //  (<any>comp).onUpdate(deltaTime);
-    //}
   }
 
   onTouchUpdate(tea: TouchEventArgs) {
     for (let comp of this.trackers[0].components) {
       if ((<any>comp).onTouchUpdate) {
         (<any>comp).onTouchUpdate(tea);
+      }
+    }
+  }
+
+  onKeyUpdate(kea: KeyEventArgs): void {
+    for (let comp of this.trackers[0].components) {
+      if ((<any>comp).onKeyUpdate) {
+        (<any>comp).onKeyUpdate(kea);
       }
     }
   }

@@ -1,5 +1,5 @@
 import { Vect } from "../utils/vect";
-import { IInputHandler, TouchEventArgs, TouchState } from "./engine";
+import { IInputHandler, KeyEventArgs, TouchEventArgs, TouchState } from "./engine";
 
 export class TouchDragHandler implements IInputHandler {
   private touchId: number = -1;
@@ -41,5 +41,9 @@ export class TouchDragHandler implements IInputHandler {
         }
       }
     }
+  }
+
+  onKeyUpdate(kea: KeyEventArgs): void {
+    //
   }
 }

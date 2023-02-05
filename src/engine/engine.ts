@@ -62,15 +62,15 @@ export class Engine {
     let updateTouchSingle = (touch: Touch) => {
       touches[touch.id] = touch;
     }
-    let raiseInputSystemEventAndClean = () => {
+    let raiseTouchInputSystemEventAndClean = () => {
       if (engine.inputSystem) {
         let t: Touch[] = [];
-        for(let key in touches) {
+        for (let key in touches) {
           t.push(touches[key]);
         }
         engine.inputSystem.onTouchUpdate(new TouchEventArgs(t));
       }
-      for(let key in touches) {
+      for (let key in touches) {
         if (touches[key].state === TouchState.Release) {
           delete touches[key];
         }
@@ -78,11 +78,11 @@ export class Engine {
     }
     let updateTouchesFromMouseEvent = (ev: MouseEvent, state: TouchState) => {
       updateTouchSingle(new Touch(100, TouchDeviceKind.Mouse, state, new Vect(ev.x, ev.y)))
-      raiseInputSystemEventAndClean();
+      raiseTouchInputSystemEventAndClean();
     }
     let updateTouchesFromTouchEvent = (ev: TouchEvent) => {
       let updatedTouches = [];
-      for(let evtouch of ev.touches) {
+      for (let evtouch of ev.touches) {
         updatedTouches[evtouch.identifier] = true;
         if (!touches[evtouch.identifier]) {
           // New touch
@@ -93,7 +93,7 @@ export class Engine {
       }
 
       // Remove touches no longer available
-      for(let key in touches) {
+      for (let key in touches) {
         let touch = touches[key];
         if (touch.deviceKind === TouchDeviceKind.Finger) {
           if (!updatedTouches[touch.id]) {
@@ -101,7 +101,7 @@ export class Engine {
           }
         }
       }
-      raiseInputSystemEventAndClean();
+      raiseTouchInputSystemEventAndClean();
     }
 
     canvas.onmousedown = (ev) => {
@@ -133,6 +133,38 @@ export class Engine {
       ev.preventDefault();
       updateTouchesFromTouchEvent(ev);
     }
+
+    let pressedKeys: { [key: string]: KeyState } = {};
+    let changedKeysOnLastFrame: { [key: string]: KeyState } = {};
+    let updateKeysFromKeyboardEvent = (ev: KeyboardEvent, state: KeyState) => {
+      pressedKeys[ev.key] = state;
+      changedKeysOnLastFrame[ev.key] = state;
+      raiseKeyInputSystemEventAndClean();
+    }
+    let raiseKeyInputSystemEventAndClean = () => {
+      if (engine.inputSystem) {
+        let k: { [key: string]: KeyState } = {};
+        for (let key in pressedKeys) {
+          k[key] = pressedKeys[key];
+        }
+        engine.inputSystem.onKeyUpdate(new KeyEventArgs(k));
+      }
+      for (let key in pressedKeys) {
+        if (pressedKeys[key] === KeyState.JustPressed) {
+          pressedKeys[key] = KeyState.Pressed;
+        } else if (pressedKeys[key] === KeyState.JustReleased) {
+          delete pressedKeys[key];
+        }
+      }
+    }
+    canvas.onkeydown = (ev: KeyboardEvent) => {
+      ev.preventDefault();
+      updateKeysFromKeyboardEvent(ev, KeyState.JustPressed);
+    };
+    canvas.onkeyup = (ev: KeyboardEvent) => {
+      ev.preventDefault();
+      updateKeysFromKeyboardEvent(ev, KeyState.JustReleased);
+    };
 
     return engine;
   }
@@ -321,10 +353,12 @@ export class Engine {
 
 export interface IInputSystem {
   onTouchUpdate(tea: TouchEventArgs): void;
+  onKeyUpdate(kea: KeyEventArgs): void;
 }
 
 export interface IInputHandler {
   onTouchUpdate(tea: TouchEventArgs): void;
+  onKeyUpdate(kea: KeyEventArgs): void;
 }
 
 export enum TouchDeviceKind {
@@ -347,11 +381,22 @@ export class TouchEventArgs {
   constructor(public readonly touches: Touch[]) { }
 
   public getTouchById(id: number): Touch | null {
-    for(let touch of this.touches) {
+    for (let touch of this.touches) {
       if (touch.id === id) return touch;
     }
     return null;
   }
+}
+
+export enum KeyState {
+  Released = 0,
+  Pressed = 1,
+  JustPressed = 2,
+  JustReleased = 3,
+}
+
+export class KeyEventArgs {
+  constructor(public readonly pressed: { [key: string]: KeyState }) { }
 }
 
 export abstract class EngineSystem {
@@ -449,13 +494,13 @@ export abstract class EngineSystemWithTrackers extends EngineSystem {
   }
 
   onNodeAddedOrModified(node: Node): void {
-    for(let tracker of this.trackers) {
+    for (let tracker of this.trackers) {
       tracker.onNodeAddedOrModified(node);
     }
   }
 
   onNodeRemoved(node: Node) {
-    for(let tracker of this.trackers) {
+    for (let tracker of this.trackers) {
       tracker.onNodeRemoved(node);
     }
   }

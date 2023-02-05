@@ -2,7 +2,7 @@ import * as Peer from "peerjs";
 import { DefaultInput, DefaultInputReader } from "./defaultinput";
 import StatCounter from "../utils/statcounter";
 import { LockstepNetcode } from "./netcode/lockstep";
-import { NetplayPlayer, NetplayState } from "./types";
+import { NetplayInput, NetplayPlayer, NetplayState } from "./types";
 
 import * as log from "loglevel";
 import { GameWrapper } from "./gamewrapper";
@@ -11,23 +11,23 @@ import { RollbackNetcode } from "./netcode/rollback";
 
 const PING_INTERVAL = 100;
 
-export class RollbackWrapper extends GameWrapper {
+export class RollbackWrapper<TInput extends NetplayInput<TInput>> extends GameWrapper<TInput> {
   pingMeasure: StatCounter = new StatCounter(0.2);
 
-  game: Game;
+  game: Game<TInput>;
 
-  rollbackNetcode?: RollbackNetcode<Game, DefaultInput>;
+  rollbackNetcode?: RollbackNetcode<Game<TInput>, TInput>;
 
-  constructor(game: Game, canvas: HTMLCanvasElement) {
+  constructor(game: Game<TInput>, canvas: HTMLCanvasElement) {
     super(game, canvas);
   }
 
   getInitialInputs(
     players: Array<NetplayPlayer>
-  ): Map<NetplayPlayer, DefaultInput> {
-    let initialInputs: Map<NetplayPlayer, DefaultInput> = new Map();
+  ): Map<NetplayPlayer, TInput> {
+    let initialInputs: Map<NetplayPlayer, TInput> = new Map();
     for (let player of players) {
-      initialInputs.set(player, new DefaultInput());
+      initialInputs.set(player, this.game.getStartInput());
     }
     return initialInputs;
   }
@@ -45,7 +45,7 @@ export class RollbackWrapper extends GameWrapper {
       10,
       this.pingMeasure,
       this.game.timestep,
-      () => this.inputReader.getInput(),
+      () => this.game.getInput(),
       (frame, input) => {
         conn.send({ type: "input", frame: frame, input: input.serialize() });
       },
@@ -56,7 +56,7 @@ export class RollbackWrapper extends GameWrapper {
 
     conn.on("data", (data: any) => {
       if (data.type === "input") {
-        let input = new DefaultInput();
+        let input = this.game.getStartInput();
         input.deserialize(data.input);
         this.rollbackNetcode!.onRemoteInput(data.frame, players![1], input);
       } else if (data.type == "ping-req") {
@@ -89,7 +89,7 @@ export class RollbackWrapper extends GameWrapper {
       10,
       this.pingMeasure,
       this.game.timestep,
-      () => this.inputReader.getInput(),
+      () => this.game.getInput(),
       (frame, input) => {
         conn.send({ type: "input", frame: frame, input: input.serialize() });
       }
@@ -97,7 +97,7 @@ export class RollbackWrapper extends GameWrapper {
 
     conn.on("data", (data: any) => {
       if (data.type === "input") {
-        let input = new DefaultInput();
+        let input = this.game.getStartInput();
         input.deserialize(data.input);
         this.rollbackNetcode!.onRemoteInput(data.frame, players![0], input);
       } else if (data.type === "state") {

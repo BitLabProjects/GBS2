@@ -3,22 +3,10 @@ import { clone, copyfields as copyFields } from "./utils";
 // Use a specific type only to tag using places, to be self-explanatory
 export type SerializedState = any;
 
-export abstract class NetplayState<TInput extends NetplayInput<TInput>> {
-  abstract tick(playerInputs: Map<NetplayPlayer, TInput>): void;
-
-  /**
-   * By default, use the auto serializer.
-   */
-  serialize(): SerializedState {
-    return clone(this);
-  }
-
-  /**
-   * By default, use the auto deserializer.
-   */
-  deserialize(value: SerializedState): void {
-    copyFields(value, this);
-  }
+export interface NetplayState<TInput extends NetplayInput<TInput>> {
+  tick(playerInputs: Map<NetplayPlayer, TInput>): void;
+  serialize(): SerializedState;
+  deserialize(value: SerializedState): void;
 }
 
 export abstract class NetplayInput<TInput extends NetplayInput<TInput>> {
@@ -70,33 +58,4 @@ export class NetplayPlayer {
   getID(): number {
     return this.id;
   }
-}
-
-export interface GameType<TState, TInput> {
-  /**
-   * Given a list of players, return the initial game state.
-   */
-  constructInitialState(players: Array<NetplayPlayer>): TState;
-
-  /**
-   * Construct a new input object with a default value. A new object
-   * needs to be constructed, since serialized values will be copied into this.
-   */
-  constructDefaultInput(): TInput;
-
-  /**
-   * The game simulation timestep, in milliseconds.
-   */
-  timestep: number;
-
-  // The dimensions of the rendering canvas.
-  canvasWidth: number;
-  canvasHeight: number;
-
-  draw(state: TState, canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): void;
-
-  getInputReader(
-    document: HTMLDocument,
-    canvas: HTMLCanvasElement
-  ): () => TInput;
 }
