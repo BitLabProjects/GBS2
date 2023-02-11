@@ -12,10 +12,10 @@ export class JoystickComp extends Component implements IInputHandler {
   dx: number = 0;
   dy: number = 0;
 
-  constructor() {
+  constructor(private readonly isLeft: boolean) {
     super();
     this.touchDragHandler = new TouchDragHandler(
-      (point: Vect) => (this.node! as NodeUI).transformUI.bounds.isInside(point),
+      (point: Vect) => this.joystickCircle.transformUI.bounds.isInside(point),
       (point: Vect, delta: Vect) => {
         delta = delta.clone();
         delta.clampLength(40);
@@ -26,17 +26,17 @@ export class JoystickComp extends Component implements IInputHandler {
   }
 
   onCreate() {
-    let tex = Texture.createFromUrl(this.node!.scene.engine, "ui/circle.png", false);
+    let tex = Texture.createFromUrl(this.node!.scene.engine, "webrtc/ui.png", false);
 
     this.joystickCircle = new NodeUI(this.node!.scene, TransformUI.default(), this.node! as NodeUI);
-    this.joystickCircle.transformUI.alignH = Align.Begin;
+    this.joystickCircle.transformUI.alignH = this.isLeft ? Align.Begin : Align.End;
     this.joystickCircle.transformUI.alignV = Align.End;
-    this.joystickCircle.transformUI.width = 128;
-    this.joystickCircle.transformUI.height = 128;
+    this.joystickCircle.transformUI.width = 80;
+    this.joystickCircle.transformUI.height = 80;
     //this.joystickCircle.transformUI.renderTransform = new Vect(20, -20);
     this.joystickCircle.transformUI.margin = Margin.uniform(50);
     let circleBottomLeftSpr = new SpriteComp(tex);
-    circleBottomLeftSpr.color = { r: 0.8, g: 0.8, b: 1, a: 1 };
+    circleBottomLeftSpr.color = { r: 0.4, g: 0.4, b: 0.4, a: 0.4 };
     circleBottomLeftSpr.textureRect = new Rect(0, 0, 128, 128);
     this.joystickCircle.addComponent(circleBottomLeftSpr);
   }

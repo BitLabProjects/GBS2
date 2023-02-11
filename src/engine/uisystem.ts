@@ -256,7 +256,7 @@ export class UIMaterial extends Material {
        uniform sampler2D uSampler;
 
        void main() {
-         color = texture(uSampler, v_uv); // * v_color;
+         color = texture(uSampler, v_uv) * v_color;
          //color = vec4(v_uv, 0.0, 1.0);
        }
       `);

@@ -11,6 +11,7 @@ import { TouchControl, VirtualJoystick } from "../../net/touchcontrols";
 import { NetplayPlayer, SerializedState } from "../../net/types";
 import { clone } from "../../net/utils";
 import { ObjUtils } from "../../utils/objutils";
+import { Vect } from "../../utils/vect";
 import { FullScreenQuad } from "../flocking/fullscreenquad";
 import { JoystickComp } from "./joystickcomp";
 //import { JoystickComp } from "./JoystickComp";
@@ -82,7 +83,8 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
   private state: GameState;
 
   private nodeRootUI: NodeUI;
-  private joystickComp: JoystickComp;
+  private joystickCompLeft: JoystickComp;
+  private joystickCompRight: JoystickComp;
 
   private readonly maxLife: number = 10;
 
@@ -102,12 +104,17 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
     this.draw();
 
-    // TODO Show touch controls only on mobile
-    // if (window.navigator.userAgent.toLowerCase().includes("mobile")) ...
-    this.nodeRootUI = NodeUI.createFromComp(this.scene, new UIRootComp());
+    // Show touch controls only on mobile and request fullscreen
+    if (this.scene.engine.isMobile) {
+      this.nodeRootUI = NodeUI.createFromComp(this.scene, new UIRootComp());
+      this.scene.engine.requestFullscreen();
+      
+      this.joystickCompLeft = new JoystickComp(true);
+      NodeUI.createFromComp(this.scene, this.joystickCompLeft, this.nodeRootUI);
 
-    this.joystickComp = new JoystickComp();
-    NodeUI.createFromComp(this.scene, this.joystickComp, this.nodeRootUI);
+      this.joystickCompRight = new JoystickComp(false);
+      NodeUI.createFromComp(this.scene, this.joystickCompRight, this.nodeRootUI);
+    }
   }
 
   onUpdate() {
@@ -134,13 +141,15 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
       input.pressed[key] = this.keys[key];
     }
     input.touchControls = {};
-    input.touchControls["joystick1"] = { x: this.joystickComp.dx, y: this.joystickComp.dy};
+    input.touchControls["joystick1"] = { x: this.joystickCompLeft?.dx ?? 0, y: this.joystickCompLeft?.dy ?? 0};
+    input.touchControls["joystick2"] = { x: this.joystickCompRight?.dx ?? 0, y: this.joystickCompRight?.dy ?? 0};
     return input;
   }
   getStartInput(): DefaultInput {
     let input = new DefaultInput();
     input.touchControls = {};
     input.touchControls["joystick1"] = { x: 0, y: 0};
+    input.touchControls["joystick2"] = { x: 0, y: 0};
     return input;
   }
 
@@ -178,8 +187,8 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
         unitState.xDir = vel.x / velLen;
         unitState.yDir = vel.y / velLen;
       }
-      unitState.x += (vel.x * 30 + unitState.xKnock) * deltaTime;
-      unitState.y += (vel.y * 30 + unitState.yKnock) * deltaTime;
+      unitState.x += (vel.x * 50 + unitState.xKnock) * deltaTime;
+      unitState.y += (vel.y * 50 + unitState.yKnock) * deltaTime;
 
       unitState.xKnock *= 0.85;
       unitState.yKnock *= 0.85;
@@ -187,11 +196,21 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
       if (unitState.coolDown > 0) {
         unitState.coolDown -= deltaTime;
       } else {
-        if (input.isPressed(" ") /*|| input.touchControls!.joystick2.x !== 0 || input.touchControls!.joystick2.y !== 0*/) {
+        if (input.isPressed(" ") || input.touchControls!.joystick2.x !== 0 || input.touchControls!.joystick2.y !== 0) {
           // Fire
-          this.state.projectiles.push(new ProjectileState(unitState.x + unitState.xDir * 10,
-            unitState.y + unitState.yDir * 10,
-            unitState.xDir * 60, unitState.yDir * 60,
+          let dir: Vect;
+          if (input.touchControls!.joystick2) {
+            dir = new Vect(input.touchControls!.joystick2.x, input.touchControls!.joystick2.y);
+            dir.normalize();
+          } else {
+            dir = new Vect(unitState.xDir, unitState.yDir);
+          }
+
+          this.state.projectiles.push(new ProjectileState(
+            unitState.x + dir.x * 10,
+            unitState.y + dir.y * 10,
+            dir.x * 60, 
+            dir.y * 60,
             60 * 3, player.getID()));
           unitState.coolDown = 0.5;
         }

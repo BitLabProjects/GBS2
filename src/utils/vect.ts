@@ -19,6 +19,15 @@ export class Vect {
     }
   }
 
+  normalize() {
+    let l = this.length;
+    if (l < 0.00001) {
+      this.scale(0);
+    } else {
+      this.scale(1 / l);
+    }
+  }
+
   clone(): Vect {
     return new Vect(this.x, this.y);
   }

@@ -143,6 +143,10 @@ export class Engine {
     return engine;
   }
 
+  public get isMobile(): boolean {
+    return window.navigator.userAgent.toLowerCase().includes("mobile");
+  }
+
   public get width(): number {
     return this.canvas.width;
   }
@@ -177,6 +181,10 @@ export class Engine {
 
     // Set the WebGL context to be the full size of the canvas
     this.onResize();
+  }
+
+  public requestFullscreen() {
+    document.body.requestFullscreen();
   }
 
   public onResize() {
