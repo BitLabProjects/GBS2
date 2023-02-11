@@ -55,6 +55,15 @@ export enum Align {
   End,
   Stretch,
 }
+export class Margin {
+  constructor(public left: number, public top: number, public right: number, public bottom: number) {
+
+  }
+
+  static uniform(value: number) {
+    return new Margin(value, value, value, value);
+  }
+}
 export class TransformUI implements Transform {
   public bounds: Rect;
   constructor(
@@ -62,12 +71,13 @@ export class TransformUI implements Transform {
     public height: number,
     public alignH: Align,
     public alignV: Align,
+    public margin: Margin,
     public renderTransform: Vect) {
     this.bounds = new Rect(0, 0, 0, 0);
   }
 
   static default(): TransformUI {
-    return new TransformUI(-1, -1, Align.Stretch, Align.Stretch, new Vect(0, 0));
+    return new TransformUI(-1, -1, Align.Stretch, Align.Stretch, Margin.uniform(0), new Vect(0, 0));
   }
 }
 

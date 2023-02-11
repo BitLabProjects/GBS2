@@ -106,31 +106,32 @@ export class UISystem extends EngineSystemWithTrackers {
   onUpdate(deltaTime: number): void {
     let gl = this.engine.gl;
 
-    let calcCoordFromAlign = (size: number, areaSize: number, align: Align) => {
+    let calcCoordFromAlign = (size: number, availableSize: number, align: Align, marginBefore: number, marginAfter: number) => {
       switch (align) {
         case Align.Begin:
         case Align.Stretch:
-          return 0;
+          return marginBefore;
         case Align.Middle:
-          return areaSize / 2 - size / 2;
+          return availableSize / 2 - size / 2 + marginBefore - marginAfter;
         case Align.End:
-          return areaSize - size;
+          return availableSize - size - marginAfter;
       }
     };
-    let calcSizeFromAlign = (size: number, areaSize: number, align: Align) => {
+    let calcSizeFromAlign = (size: number, availableSize: number, align: Align, marginBefore: number, marginAfter: number) => {
       switch (align) {
         case Align.Stretch:
-          return areaSize;
+          return availableSize - marginBefore - marginAfter;
         default:
           return size;
       }
     };
-    let updateAndRender = (node: NodeUI, x: number, y: number, w: number, h: number) => {
+    let updateAndRender = (node: NodeUI, x: number, y: number, availableWidth: number, availableHeight: number) => {
       let transform = node.transform as TransformUI;
-      transform.bounds.x = x + calcCoordFromAlign(transform.width, w, transform.alignH) + transform.renderTransform.x;
-      transform.bounds.y = x + calcCoordFromAlign(transform.height, h, transform.alignV) + transform.renderTransform.y;
-      transform.bounds.width = calcSizeFromAlign(transform.width, w, transform.alignH);
-      transform.bounds.height = calcSizeFromAlign(transform.height, h, transform.alignV);
+      let margin = transform.margin;
+      transform.bounds.x = x + calcCoordFromAlign(transform.width, availableWidth, transform.alignH, margin.left, margin.right) + transform.renderTransform.x;
+      transform.bounds.y = y + calcCoordFromAlign(transform.height, availableHeight, transform.alignV, margin.top, margin.bottom) + transform.renderTransform.y;
+      transform.bounds.width = calcSizeFromAlign(transform.width, availableWidth, transform.alignH, margin.left, margin.right);
+      transform.bounds.height = calcSizeFromAlign(transform.height, availableHeight, transform.alignV, margin.top, margin.bottom);
 
       // TODO Keep a tracker for this
       let sprite = node.getComponent(SpriteComp);
@@ -255,7 +256,7 @@ export class UIMaterial extends Material {
        uniform sampler2D uSampler;
 
        void main() {
-         color = texture(uSampler, v_uv) * v_color;
+         color = texture(uSampler, v_uv); // * v_color;
          //color = vec4(v_uv, 0.0, 1.0);
        }
       `);

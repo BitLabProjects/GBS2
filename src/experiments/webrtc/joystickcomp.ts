@@ -1,5 +1,5 @@
 import { IInputHandler, KeyEventArgs, TouchEventArgs } from "../../engine/engine";
-import { Align, Component, NodeUI, TransformUI } from "../../engine/node";
+import { Align, Component, Margin, NodeUI, TransformUI } from "../../engine/node";
 import { SpriteComp } from "../../engine/spritecomp";
 import { Texture } from "../../engine/texture";
 import { TouchDragHandler } from "../../engine/touchdraghandler";
@@ -31,9 +31,10 @@ export class JoystickComp extends Component implements IInputHandler {
     this.joystickCircle = new NodeUI(this.node!.scene, TransformUI.default(), this.node! as NodeUI);
     this.joystickCircle.transformUI.alignH = Align.Begin;
     this.joystickCircle.transformUI.alignV = Align.End;
-    this.joystickCircle.transformUI.width = 80;
-    this.joystickCircle.transformUI.height = 80;
-    this.joystickCircle.transformUI.renderTransform = new Vect(20, -20);
+    this.joystickCircle.transformUI.width = 128;
+    this.joystickCircle.transformUI.height = 128;
+    //this.joystickCircle.transformUI.renderTransform = new Vect(20, -20);
+    this.joystickCircle.transformUI.margin = Margin.uniform(50);
     let circleBottomLeftSpr = new SpriteComp(tex);
     circleBottomLeftSpr.color = { r: 0.8, g: 0.8, b: 1, a: 1 };
     circleBottomLeftSpr.textureRect = new Rect(0, 0, 128, 128);

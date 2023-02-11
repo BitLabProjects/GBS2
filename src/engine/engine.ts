@@ -25,7 +25,7 @@ export class Engine {
   private time: number;
 
   constructor(public readonly canvas: HTMLCanvasElement) {
-    this.gl = canvas.getContext("webgl2", { antialias: false })!;
+    this.gl = canvas.getContext("webgl2", { antialias: false, premultipliedAlpha: false, alpha: false })!;
     this.lastNodeID = 0;
     this.lastTrackerID = 0;
     this.systems = [];
@@ -38,6 +38,7 @@ export class Engine {
     canvas.style.position = "fixed";
     canvas.style.left = "0px";
     canvas.style.top = "0px";
+    canvas.style.touchAction = "none"; // Necessary to correctly capture pointer move events
     let setCanvasSizeFromWindow = (canvas: HTMLCanvasElement) => {
       canvas.width = document.documentElement.clientWidth;
       canvas.height = document.documentElement.clientHeight;
@@ -76,68 +77,35 @@ export class Engine {
         }
       }
     }
-    let updateTouchesFromMouseEvent = (ev: MouseEvent, state: TouchState) => {
-      updateTouchSingle(new Touch(100, TouchDeviceKind.Mouse, state, new Vect(ev.x, ev.y)))
-      raiseTouchInputSystemEventAndClean();
-    }
-    let updateTouchesFromTouchEvent = (ev: TouchEvent) => {
-      let updatedTouches = [];
-      for (let evtouch of ev.touches) {
-        updatedTouches[evtouch.identifier] = true;
-        if (!touches[evtouch.identifier]) {
-          // New touch
-          updateTouchSingle(new Touch(evtouch.identifier, TouchDeviceKind.Finger, TouchState.Press, new Vect(evtouch.clientX, evtouch.clientY)));
-        } else {
-          updateTouchSingle(new Touch(evtouch.identifier, TouchDeviceKind.Finger, TouchState.Update, new Vect(evtouch.clientX, evtouch.clientY)));
-        }
+    let updateTouchesFromTouchEvent = (ev: PointerEvent, state: TouchState) => {
+      console.log("PointerType: " + ev.pointerType);
+
+      let kind = TouchDeviceKind.Mouse;
+      if (ev.pointerType === "touch") {
+        kind = TouchDeviceKind.Finger;
       }
 
-      // Remove touches no longer available
-      for (let key in touches) {
-        let touch = touches[key];
-        if (touch.deviceKind === TouchDeviceKind.Finger) {
-          if (!updatedTouches[touch.id]) {
-            updateTouchSingle(new Touch(touch.id, TouchDeviceKind.Finger, TouchState.Release, touch.pos.clone()));
-          }
-        }
-      }
+      updateTouchSingle(new Touch(ev.pointerId, kind, state, new Vect(ev.clientX, ev.clientY)));
       raiseTouchInputSystemEventAndClean();
     }
 
-    canvas.onmousedown = (ev) => {
+    canvas.onpointerdown = (ev) => {
       canvas.focus();
       ev.preventDefault();
-      updateTouchesFromMouseEvent(ev, TouchState.Press);
+      canvas.setPointerCapture(ev.pointerId);
+      updateTouchesFromTouchEvent(ev, TouchState.Press);
     }
 
-    canvas.onmousemove = (ev) => {
+    canvas.onpointermove = (ev) => {
       canvas.focus();
       ev.preventDefault();
-      updateTouchesFromMouseEvent(ev, TouchState.Update);
+      updateTouchesFromTouchEvent(ev, TouchState.Update);
     }
 
-    canvas.onmouseup = (ev) => {
+    canvas.onpointerup = (ev) => {
       canvas.focus();
       ev.preventDefault();
-      updateTouchesFromMouseEvent(ev, TouchState.Release);
-    }
-
-    canvas.ontouchstart = (ev: TouchEvent) => {
-      canvas.focus();
-      ev.preventDefault();
-      updateTouchesFromTouchEvent(ev);
-    }
-
-    canvas.ontouchmove = (ev: TouchEvent) => {
-      canvas.focus();
-      ev.preventDefault();
-      updateTouchesFromTouchEvent(ev);
-    }
-
-    canvas.ontouchend = (ev: TouchEvent) => {
-      canvas.focus();
-      ev.preventDefault();
-      updateTouchesFromTouchEvent(ev);
+      updateTouchesFromTouchEvent(ev, TouchState.Release);
     }
 
     let pressedKeys: { [key: string]: KeyState } = {};
