@@ -10,7 +10,7 @@ import { RollbackWrapper } from "../../net/rollbackwrapper";
 import { TouchControl, VirtualJoystick } from "../../net/touchcontrols";
 import { NetplayPlayer, SerializedState } from "../../net/types";
 import { clone } from "../../net/utils";
-import { ObjUtils } from "../../utils/objutils";
+import { ObjUtils, TypeDescriptor } from "../../utils/objutils";
 import { Vect } from "../../utils/vect";
 import { FullScreenQuad } from "../flocking/fullscreenquad";
 import { JoystickComp } from "./joystickcomp";
@@ -51,21 +51,27 @@ class GameState {
 }
 
 class UnitState {
-  constructor(public x: number, public y: number,
-    public xKnock: number, public yKnock: number,
-    public xDir: number, public yDir: number,
+  constructor(
+    public pos: Vect,
+    public knock: Vect,
+    public dir: Vect,
     public life: number,
     public score: number,
     public coolDown: number) { }
 }
 class ProjectileState {
-  constructor(public x: number, public y: number,
-    public xVel: number, public yVel: number,
+  constructor(
+    public pos: Vect,
+    public vel: Vect,
     public life: number,
     public playerId: number) { }
 }
 class DeadUnitState {
-  constructor(public playerId: number, public x: number, public y: number, public fadeTime: number) { }
+  constructor(
+    public playerId: number, 
+    public x: number, 
+    public y: number, 
+    public fadeTime: number) { }
 }
 
 class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler {
@@ -90,8 +96,8 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
   onCreate() {
     this.state = new GameState();
-    this.state.units.push(new UnitState(-150, 0, 0, 0, 1, 0, this.maxLife, 0, 0));
-    this.state.units.push(new UnitState(+150, 0, 0, 0, 1, 0, this.maxLife, 0, 0));
+    this.state.units.push(new UnitState(new Vect(-150, 0), new Vect(0, 0), new Vect(1, 0), this.maxLife, 0, 0));
+    this.state.units.push(new UnitState(new Vect(+150, 0), new Vect(0, 0), new Vect(1, 0), this.maxLife, 0, 0));
     this.unitSprites = [];
     this.projectileSprites = [];
     this.deadUnitSprites = [];
@@ -129,7 +135,22 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
    * By default, use the auto deserializer.
    */
   deserialize(value: SerializedState): void {
-    this.state = clone(value);
+    let td = new TypeDescriptor(GameState);
+    let unitTd = new TypeDescriptor(UnitState, true);
+    unitTd.props["pos"] = new TypeDescriptor(Vect);
+    unitTd.props["knock"] = new TypeDescriptor(Vect);
+    unitTd.props["dir"] = new TypeDescriptor(Vect);
+    td.props["units"] = unitTd;
+
+    let projectileTd = new TypeDescriptor(ProjectileState, true);
+    projectileTd.props["pos"] = new TypeDescriptor(Vect);
+    projectileTd.props["vel"] = new TypeDescriptor(Vect);
+    td.props["projectiles"] = projectileTd;
+    
+    let deadUnitTd = new TypeDescriptor(DeadUnitState, true);
+    td.props["deadUnits"] = deadUnitTd;
+
+    this.state = ObjUtils.cloneUsingTypeDescriptor(value, td);
   }
 
   init(players: NetplayPlayer[]): void {
@@ -168,49 +189,45 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
     for (const [player, input] of playerInputs.entries()) {
       // Generate player velocity from input keys.
-      const vel = {
-        x:
+      const vel = new Vect(
           (input.isPressed("ArrowLeft") ? -1 : 0) +
           (input.isPressed("ArrowRight") ? 1 : 0) +
           (input.touchControls!.joystick1.x),
-        y:
           (input.isPressed("ArrowDown") ? -1 : 0) +
           (input.isPressed("ArrowUp") ? 1 : 0) +
           (input.touchControls!.joystick1.y),
-      };
+      );
 
 
       // Apply the velocity to the appropriate player.
       let unitState = this.state.units[player.getID()];
-      let velLen = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
+      let velLen = vel.length;
       if (velLen > 0) {
-        unitState.xDir = vel.x / velLen;
-        unitState.yDir = vel.y / velLen;
+        unitState.dir = vel.clone();
+        unitState.dir.scale(1 / velLen);
       }
-      unitState.x += (vel.x * 50 + unitState.xKnock) * deltaTime;
-      unitState.y += (vel.y * 50 + unitState.yKnock) * deltaTime;
+      unitState.pos.x += (vel.x * 50 + unitState.knock.x) * deltaTime;
+      unitState.pos.y += (vel.y * 50 + unitState.knock.y) * deltaTime;
 
-      unitState.xKnock *= 0.85;
-      unitState.yKnock *= 0.85;
+      unitState.knock.scale(0.85);
 
       if (unitState.coolDown > 0) {
         unitState.coolDown -= deltaTime;
       } else {
-        if (input.isPressed(" ") || input.touchControls!.joystick2.x !== 0 || input.touchControls!.joystick2.y !== 0) {
-          // Fire
-          let dir: Vect;
-          if (input.touchControls!.joystick2) {
-            dir = new Vect(input.touchControls!.joystick2.x, input.touchControls!.joystick2.y);
-            dir.normalize();
-          } else {
-            dir = new Vect(unitState.xDir, unitState.yDir);
-          }
+        let dir: Vect | undefined;
 
+        if (input.isPressed(" ")) {
+          dir = unitState.dir.clone();
+        } else if (input.touchControls!.joystick2.x !== 0 || input.touchControls!.joystick2.y !== 0) {
+          dir = new Vect(input.touchControls!.joystick2.x, input.touchControls!.joystick2.y);
+          dir.normalize();
+        }
+
+        // Fire
+        if (dir) {
           this.state.projectiles.push(new ProjectileState(
-            unitState.x + dir.x * 10,
-            unitState.y + dir.y * 10,
-            dir.x * 60, 
-            dir.y * 60,
+            new Vect(unitState.pos.x + dir.x * 10, unitState.pos.y + dir.y * 10),
+            new Vect(dir.x * 360, dir.y * 360),
             60 * 3, player.getID()));
           unitState.coolDown = 0.5;
         }
@@ -218,33 +235,29 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     }
 
     for (let [i, projectile] of this.state.projectiles.entries()) {
-      projectile.x += projectile.xVel * deltaTime;
-      projectile.y += projectile.yVel * deltaTime;
+      projectile.pos.addScaled(projectile.vel, deltaTime);
       projectile.life -= 1;
 
       for (let [j, unit] of this.state.units.entries()) {
         if (projectile.playerId === j) {
           continue;
         }
-        let dx = projectile.x - unit.x;
-        let dy = projectile.y - unit.y;
-        if (dx * dx + dy * dy < 5 * 5) {
+        let delta = projectile.pos.getSubtracted(unit.pos);
+        if (delta.length < 5) {
           projectile.life = 0;
-          unit.xKnock = projectile.xVel * 0.8;
-          unit.yKnock = projectile.yVel * 0.8;
+          unit.knock = projectile.vel.clone();
+          unit.knock.scale(0.8);
 
           unit.life -= 1;
           if (unit.life <= 0) {
             // Add a dead unit
-            this.state.deadUnits.push(new DeadUnitState(j, unit.x, unit.y, 100));
+            this.state.deadUnits.push(new DeadUnitState(j, unit.pos.x, unit.pos.y, 100));
             // Give score to shooting player
             this.state.units[projectile.playerId].score += 1;
             // Reset unit to random location
-            unit.x = 0; // TODO Random location inside map
-            unit.y = 0;
+            unit.pos.scale(0); // TODO Random location inside map
             unit.life = this.maxLife;
-            unit.xKnock = 0;
-            unit.yKnock = 0;
+            unit.knock.scale(0);
             break;
           }
         }
@@ -277,14 +290,14 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
       }
 
       // animate sprite color based on knock strength
-      let knockLen = Math.sqrt(unit.xKnock * unit.xKnock + unit.yKnock * unit.yKnock);
+      let knockLen = unit.knock.length;
       let redQ = knockLen / 50;
       spriteComp.color.g = 1 - redQ;
       spriteComp.color.b = 1 - redQ;
 
       let t = spriteComp.node!.transform as Transform2D;
-      t.x = unit.x;
-      t.y = unit.y;
+      t.x = unit.pos.x;
+      t.y = unit.pos.y;
     }
 
     // Remove leftover unit sprites
@@ -304,8 +317,8 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
         spriteComp = this.projectileSprites[i];
       }
       let t = spriteComp.node!.transform as Transform2D;
-      t.x = projectile.x;
-      t.y = projectile.y;
+      t.x = projectile.pos.x;
+      t.y = projectile.pos.y;
     }
 
     // Remove leftover projectile sprites

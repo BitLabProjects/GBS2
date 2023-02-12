@@ -7,6 +7,10 @@ export class Vect {
     return Math.sqrt(this.x * this.x + this.y * this.y);
   }
 
+  getSubtracted(other: Vect): Vect {
+    return new Vect(this.x - other.x, this.y - other.y);
+  }
+
   scale(value: number) {
     this.x *= value;
     this.y *= value;
@@ -26,6 +30,11 @@ export class Vect {
     } else {
       this.scale(1 / l);
     }
+  }
+
+  addScaled(other: Vect, scale: number) {
+    this.x += other.x * scale;
+    this.y += other.y * scale;
   }
 
   clone(): Vect {

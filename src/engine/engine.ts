@@ -78,8 +78,6 @@ export class Engine {
       }
     }
     let updateTouchesFromTouchEvent = (ev: PointerEvent, state: TouchState) => {
-      console.log("PointerType: " + ev.pointerType);
-
       let kind = TouchDeviceKind.Mouse;
       if (ev.pointerType === "touch") {
         kind = TouchDeviceKind.Finger;
