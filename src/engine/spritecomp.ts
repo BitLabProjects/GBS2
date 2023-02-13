@@ -5,25 +5,19 @@ import { Vect } from "../utils/vect";
 import { Component } from "./node";
 import { Texture } from "./texture";
 
-export class SpriteComp extends Component {
-  color: Color;
+export class Sprite {
   _texture: Texture;
   textureRect: Rect;
   offset: Vect;
 
-  constructor(texture: Texture, color?: Color, offset?: Vect) {
-    super();
-    this.color = color ?? new Color(1, 1, 1, 1);
+  constructor(texture: Texture, offset?: Vect, textureRect?: Rect) {
     this._texture = texture;
-    this.textureRect = new Rect(0, 0, -1, -1);
+    this.textureRect = textureRect ?? new Rect(0, 0, -1, -1);
     this.offset = offset ?? new Vect(0, 0);
   }
 
-  clone(): SpriteComp {
-    let result = new SpriteComp(this._texture, this.color.clone());
-    result.textureRect = this.textureRect.clone();
-    result.offset = this.offset.clone();
-    return result;
+  clone(): Sprite {
+    return new Sprite(this._texture, this.offset.clone(), this.textureRect.clone());
   }
 
   // TODO Allow changing texture at runtime by signalling a change to the SpriteSystem inside the texture setter
@@ -33,5 +27,20 @@ export class SpriteComp extends Component {
     let offX = 4;
     let offY = 0;
     return new Rect(-offX, -offY, this.texture.width, this.texture.height);
+  }
+}
+
+export class SpriteComp extends Component {
+  color: Color;
+  sprite: Sprite;
+
+  constructor(sprite: Sprite, color?: Color) {
+    super();
+    this.sprite = sprite;
+    this.color = color ?? new Color(1, 1, 1, 1);
+  }
+
+  clone(): SpriteComp {
+    return new SpriteComp(this.sprite, this.color.clone());
   }
 }

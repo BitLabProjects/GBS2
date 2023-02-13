@@ -1,7 +1,7 @@
 import { Engine } from "../../engine/engine";
 import { Node, Node2D } from "../../engine/node";
 import { Scene } from "../../engine/scene";
-import { SpriteComp } from "../../engine/spritecomp";
+import { Sprite, SpriteComp } from "../../engine/spritecomp";
 import { Texture } from "../../engine/texture";
 import StatCounter from "../../utils/statcounter";
 
@@ -21,11 +21,11 @@ export class SpritePerfScene extends Scene {
     this.angleSpeeds = [];
     this.xSpeeds = [];
     this.ySpeeds = [];
-    let textures = [];
-    textures.push(Texture.createFromUrl(engine, `flocking/unit1.png`));
-    textures.push(Texture.createFromUrl(engine, `flocking/unit2.png`));
+    let sprites: Sprite[] = [];
+    sprites.push(new Sprite(Texture.createFromUrl(engine, `flocking/unit1.png`)));
+    sprites.push(new Sprite(Texture.createFromUrl(engine, `flocking/unit2.png`)));
     for (let i = 0; i < 100 * 1000; i++) {
-      let comp = new SpriteComp(textures[i % 2]);
+      let comp = new SpriteComp(sprites[i % 2]);
       let node = Node2D.createFromComp(this, comp);
       node.transform2D.x = Math.random() * engine.width * 0.8 + engine.width * 0.1 - engine.width / 2;
       node.transform2D.y = Math.random() * engine.height * 0.8 + engine.height * 0.1 - engine.height / 2;

@@ -1,7 +1,7 @@
 import { Engine, TouchEventArgs, TouchState } from "../../engine/engine";
 import { Align, Component, NodeUI, TransformUI } from "../../engine/node";
 import { Scene } from "../../engine/scene";
-import { SpriteComp } from "../../engine/spritecomp";
+import { Sprite, SpriteComp } from "../../engine/spritecomp";
 import { Texture } from "../../engine/texture";
 import { UIRootComp } from "../../engine/uirootcomp";
 import { Color } from "../../utils/color";
@@ -26,9 +26,9 @@ export class UIScene extends Scene {
     this.circleBottomLeft.transformUI.alignV = Align.End;
     this.circleBottomLeft.transformUI.width = 128;
     this.circleBottomLeft.transformUI.height = 128;
-    let circleBottomLeftSpr = new SpriteComp(tex);
+    let circleBottomLeftSpr = new SpriteComp(new Sprite(tex));
     circleBottomLeftSpr.color = new Color(0.8, 0.8, 1, 1);
-    circleBottomLeftSpr.textureRect = new Rect(0, 0, 128, 128);
+    circleBottomLeftSpr.sprite.textureRect = new Rect(0, 0, 128, 128);
     this.circleBottomLeft.addComponent(circleBottomLeftSpr);
     this.circleBottomLeft.addComponent(new DraggableComponent());
 
@@ -37,9 +37,9 @@ export class UIScene extends Scene {
     this.squareTopRight.transformUI.alignV = Align.Begin;
     this.squareTopRight.transformUI.width = 128;
     this.squareTopRight.transformUI.height = 128;
-    let squareTopRightSpr = new SpriteComp(tex);
+    let squareTopRightSpr = new SpriteComp(new Sprite(tex));
     squareTopRightSpr.color = new Color(1, 0.8, 0.8, 1);
-    squareTopRightSpr.textureRect = new Rect(128, 0, 128, 128);
+    squareTopRightSpr.sprite.textureRect = new Rect(128, 0, 128, 128);
     this.squareTopRight.addComponent(squareTopRightSpr);
     this.squareTopRight.addComponent(new DraggableComponent());
 
@@ -48,9 +48,9 @@ export class UIScene extends Scene {
     this.rhombusTopRight.transformUI.alignV = Align.Middle;
     this.rhombusTopRight.transformUI.width = 128;
     this.rhombusTopRight.transformUI.height = 128;
-    let rhombusTopRightSpr = new SpriteComp(tex);
+    let rhombusTopRightSpr = new SpriteComp(new Sprite(tex));
     rhombusTopRightSpr.color = new Color(0.8, 1, 0.8, 1);
-    rhombusTopRightSpr.textureRect = new Rect(0, 128, 128, 128);
+    rhombusTopRightSpr.sprite.textureRect = new Rect(0, 128, 128, 128);
     this.rhombusTopRight.addComponent(rhombusTopRightSpr);
     this.rhombusTopRight.addComponent(new DraggableComponent());
   }

@@ -172,10 +172,10 @@ export class UISystem extends EngineSystemWithTrackers {
         instanceData[offset + 6] = spriteComp.color.a;
         instanceData[offset + 7] = transform.bounds.width;
         instanceData[offset + 8] = transform.bounds.height;
-        instanceData[offset + 9] = spriteComp.textureRect.x;
-        instanceData[offset + 10] = spriteComp.textureRect.y;
-        instanceData[offset + 11] = spriteComp.textureRect.width;
-        instanceData[offset + 12] = spriteComp.textureRect.height;
+        instanceData[offset + 9] = spriteComp.sprite.textureRect.x;
+        instanceData[offset + 10] = spriteComp.sprite.textureRect.y;
+        instanceData[offset + 11] = spriteComp.sprite.textureRect.width;
+        instanceData[offset + 12] = spriteComp.sprite.textureRect.height;
         offset += geometryInstances.entriesPerInstance;
       }
       geometryInstances.updateBuffer();
@@ -183,7 +183,7 @@ export class UISystem extends EngineSystemWithTrackers {
       this.engine.useMaterial(this.material);
 
       // TODO Expand to more textures, for now only one atlas
-      let texture = spriteComps[0].texture;
+      let texture = spriteComps[0].sprite.texture;
       this.engine.useTexture(texture, "uSampler");
       this.engine.useGeometry(this.geometry, geometryInstances);
 

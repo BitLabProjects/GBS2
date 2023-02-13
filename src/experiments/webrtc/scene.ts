@@ -1,7 +1,7 @@
 import { Engine, IInputHandler, KeyEventArgs, TouchEventArgs } from "../../engine/engine";
 import { Component, Node, NodeUI, Transform2D } from "../../engine/node";
 import { Scene } from "../../engine/scene";
-import { SpriteComp } from "../../engine/spritecomp";
+import { Sprite, SpriteComp } from "../../engine/spritecomp";
 import { Texture } from "../../engine/texture";
 import { UIRootComp } from "../../engine/uirootcomp";
 import { DefaultInput, KeyState } from "../../net/defaultinput";
@@ -42,11 +42,13 @@ class GameState {
   units: UnitState[];
   projectiles: ProjectileState[];
   deadUnits: DeadUnitState[];
+  mobs: MobState[];
 
   constructor() {
     this.units = [];
     this.projectiles = [];
     this.deadUnits = [];
+    this.mobs = [];
   }
 }
 
@@ -57,7 +59,8 @@ class UnitState {
     public dir: Vect,
     public life: number,
     public score: number,
-    public coolDown: number) { }
+    public coolDown: number,
+    public lastHitByPlayerId: number) { }
 }
 class ProjectileState {
   constructor(
@@ -73,16 +76,27 @@ class DeadUnitState {
     public y: number, 
     public fadeTime: number) { }
 }
+enum EMobType {
+  Unknown = 0,
+  Dummy = 1,
+}
+class MobState {
+  constructor(public type: EMobType, public pos: Vect) {
+  }
+}
 
 class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler {
   timestep: number = 1000 / 60;
   deterministic: boolean = true;
 
-  private unitSprites: SpriteComp[];
-  private projectileSprites: SpriteComp[];
+  private unitSpriteComps: SpriteComp[];
+  private projectileSpriteComps: SpriteComp[];
   private deadUnitSprites: SpriteComp[];
-  private unitSpritePrefabs: SpriteComp[];
-  private projectileSpritePrefab: SpriteComp;
+  private mobSpriteComps: SpriteComp[];
+
+  private unitSprites: Sprite[];
+  private projectileSprite: Sprite;
+  private mobSprites: Sprite[];
 
   keys: { [key: string]: KeyState } = {};
 
@@ -96,16 +110,21 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
   onCreate() {
     this.state = new GameState();
-    this.state.units.push(new UnitState(new Vect(-150, 0), new Vect(0, 0), new Vect(1, 0), this.maxLife, 0, 0));
-    this.state.units.push(new UnitState(new Vect(+150, 0), new Vect(0, 0), new Vect(1, 0), this.maxLife, 0, 0));
-    this.unitSprites = [];
-    this.projectileSprites = [];
+    this.state.units.push(new UnitState(new Vect(-150, 0), new Vect(0, 0), new Vect(1, 0), this.maxLife, 0, 0, -1));
+    this.state.units.push(new UnitState(new Vect(+150, 0), new Vect(0, 0), new Vect(1, 0), this.maxLife, 0, 0, -1));
+    this.state.mobs.push(new MobState(EMobType.Dummy, new Vect(0, 0)));
+    this.unitSpriteComps = [];
+    this.projectileSpriteComps = [];
     this.deadUnitSprites = [];
+    this.mobSpriteComps = [];
 
-    this.unitSpritePrefabs = [];
-    this.unitSpritePrefabs.push(new SpriteComp(Texture.createFromUrl(this.scene.engine, `flocking/unit1.png`), undefined, new Vect(4, 0)));
-    this.unitSpritePrefabs.push(new SpriteComp(Texture.createFromUrl(this.scene.engine, `flocking/unit2.png`), undefined, new Vect(6, 0)));
-    this.projectileSpritePrefab = new SpriteComp(Texture.createFromUrl(this.scene.engine, `webrtc/bullet1.png`), undefined, new Vect(3, 3));
+    this.unitSprites = [];
+    this.unitSprites.push(new Sprite(Texture.createFromUrl(this.scene.engine, `flocking/unit1.png`), new Vect(4, 0)));
+    this.unitSprites.push(new Sprite(Texture.createFromUrl(this.scene.engine, `flocking/unit2.png`), new Vect(6, 0)));
+    this.projectileSprite = new Sprite(Texture.createFromUrl(this.scene.engine, `webrtc/bullet1.png`), new Vect(3, 3));
+
+    this.mobSprites = [];
+    this.mobSprites[EMobType.Dummy] = new Sprite(Texture.createFromUrl(this.scene.engine, `webrtc/dummy.png`), new Vect(4, 0));
 
     this.draw();
 
@@ -146,8 +165,12 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     projectileTd.props["vel"] = new TypeDescriptor(Vect);
     td.props["projectiles"] = projectileTd;
     
-    let deadUnitTd = new TypeDescriptor(DeadUnitState, true);
+    let deadUnitTd = new TypeDescriptor(DeadUnitState, true); 
     td.props["deadUnits"] = deadUnitTd;
+
+    let mobTd = new TypeDescriptor(MobState, true);
+    mobTd.props["pos"] = new TypeDescriptor(Vect);
+    td.props["mobs"] = mobTd;
 
     this.state = ObjUtils.cloneUsingTypeDescriptor(value, td);
   }
@@ -225,13 +248,13 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
         // Fire
         if (dir) {
           let pos = unitState.pos.clone();
-          pos.addScaled(this.unitSprites[player.getID()].spriteRect.center, 1);
+          pos.addScaled(this.unitSpriteComps[player.getID()].sprite.spriteRect.center, 1);
           pos.addScaled(dir, 10);
           this.state.projectiles.push(new ProjectileState(
             pos,
             new Vect(dir.x * 360, dir.y * 360),
             60 * 3, player.getID()));
-          unitState.coolDown = 0.5;
+          unitState.coolDown = 0.05;
         }
       }
     }
@@ -240,30 +263,28 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
       let projectileDelta = projectile.vel.clone();
       projectileDelta.scale(deltaTime);
 
+      // Hit units
       for (let [j, unit] of this.state.units.entries()) {
         if (projectile.playerId === j) {
           continue;
         }
-        let spriteRect = this.unitSprites[j].spriteRect;
-        let unitCenter = unit.pos.clone();
-        unitCenter.addScaled(spriteRect.center, 1);
-        if (unitCenter.distanceFromSegment(projectile.pos, projectileDelta) < 10) {
+        if (this.spriteCollides(projectile.pos, projectileDelta, unit.pos, this.unitSpriteComps[j].sprite)) {
           projectile.life = 0;
+
+          // Hit and knockback
+          unit.life -= 1;
+          unit.lastHitByPlayerId = projectile.playerId;          
           unit.knock = projectile.vel.clone();
           unit.knock.scale(0.8);
+        }
+      }
 
-          unit.life -= 1;
-          if (unit.life <= 0) {
-            // Add a dead unit
-            this.state.deadUnits.push(new DeadUnitState(j, unit.pos.x, unit.pos.y, 100));
-            // Give score to shooting player
-            this.state.units[projectile.playerId].score += 1;
-            // Reset unit to random location
-            unit.pos.scale(0); // TODO Random location inside map
-            unit.life = this.maxLife;
-            unit.knock.scale(0);
-            break;
-          }
+      // Hit mobs
+      for (let [j, mob] of this.state.mobs.entries()) {
+        if (this.spriteCollides(projectile.pos, projectileDelta, mob.pos, this.unitSpriteComps[j].sprite)) {
+          projectile.life = 0;
+
+          // TODO Kill mob
         }
       }
 
@@ -272,6 +293,27 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
       } else {
         projectile.pos.addScaled(projectileDelta, 1);
         projectile.life -= 1;
+      }
+    }
+
+    for (let [i, mob] of this.state.mobs.entries()) {
+
+    }
+
+    // Kill dead units
+    for (let [i, unit] of this.state.units.entries()) {
+      if (unit.life <= 0) {
+        // Add a dead unit
+        this.state.deadUnits.push(new DeadUnitState(i, unit.pos.x, unit.pos.y, 100));
+        // Give score to shooting player
+        if (unit.lastHitByPlayerId >= 0) {
+          this.state.units[unit.lastHitByPlayerId].score += 1;
+        }
+        // Reset unit to random location
+        unit.pos.scale(0); // TODO Random location inside map
+        unit.life = this.maxLife;
+        unit.knock.scale(0);
+        break;
       }
     }
 
@@ -284,16 +326,22 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     // }
   }
 
+  spriteCollides(projectilePos: Vect, projectileDelta: Vect, spritePos: Vect, sprite: Sprite) {
+    let unitCenter = spritePos.clone();
+    unitCenter.addScaled(sprite.spriteRect.center, 1);
+    return unitCenter.distanceFromSegment(projectilePos, projectileDelta) < 10;
+  }
+
   // Draw the state of our game onto a canvas.
   draw() {
     for (let [i, unit] of this.state.units.entries()) {
       let spriteComp: SpriteComp;
-      if (this.unitSprites.length <= i) {
-        spriteComp = this.unitSpritePrefabs[i].clone();
-        this.unitSprites.push(spriteComp);
+      if (this.unitSpriteComps.length <= i) {
+        spriteComp = new SpriteComp(this.unitSprites[i]);
+        this.unitSpriteComps.push(spriteComp);
         Node.createFromComp(this.scene, spriteComp);
       } else {
-        spriteComp = this.unitSprites[i];
+        spriteComp = this.unitSpriteComps[i];
       }
 
       // animate sprite color based on knock strength
@@ -308,7 +356,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     }
 
     // Remove leftover unit sprites
-    let leftoverUnitSprites = this.unitSprites.splice(this.state.units.length);
+    let leftoverUnitSprites = this.unitSpriteComps.splice(this.state.units.length);
     for (let sprite of leftoverUnitSprites) {
       this.scene.removeNode(sprite.node!);
     }
@@ -316,12 +364,12 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     // TODO Extract sync logic and unify with units above
     for (let [i, projectile] of this.state.projectiles.entries()) {
       let spriteComp: SpriteComp;
-      if (this.projectileSprites.length <= i) {
-        spriteComp = this.projectileSpritePrefab.clone();
-        this.projectileSprites.push(spriteComp);
+      if (this.projectileSpriteComps.length <= i) {
+        spriteComp = new SpriteComp(this.projectileSprite.clone());
+        this.projectileSpriteComps.push(spriteComp);
         Node.createFromComp(this.scene, spriteComp);
       } else {
-        spriteComp = this.projectileSprites[i];
+        spriteComp = this.projectileSpriteComps[i];
       }
       let t = spriteComp.node!.transform as Transform2D;
       t.x = projectile.pos.x;
@@ -329,7 +377,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     }
 
     // Remove leftover projectile sprites
-    let leftoverProjectileSprites = this.projectileSprites.splice(this.state.projectiles.length);
+    let leftoverProjectileSprites = this.projectileSpriteComps.splice(this.state.projectiles.length);
     for (let sprite of leftoverProjectileSprites) {
       this.scene.removeNode(sprite.node!);
     }
@@ -337,7 +385,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     for (let [i, unit] of this.state.deadUnits.entries()) {
       let spriteComp: SpriteComp;
       if (this.deadUnitSprites.length <= i) {
-        spriteComp = this.unitSpritePrefabs[unit.playerId].clone();
+        spriteComp = new SpriteComp(this.unitSprites[unit.playerId]);
         this.deadUnitSprites.push(spriteComp);
         Node.createFromComp(this.scene, spriteComp);
       } else {
@@ -355,6 +403,37 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     // Remove leftover unit sprites
     let leftoverDeadUnitSprites = this.deadUnitSprites.splice(this.state.deadUnits.length);
     for (let sprite of leftoverDeadUnitSprites) {
+      this.scene.removeNode(sprite.node!);
+    }
+
+    // Mobs
+    for (let [i, mob] of this.state.mobs.entries()) {
+      let spriteComp: SpriteComp;
+      if (this.mobSpriteComps.length <= i) {
+        spriteComp = new SpriteComp(this.mobSprites[mob.type] ?? this.mobSprites[EMobType.Dummy]);
+        this.mobSpriteComps.push(spriteComp);
+        Node.createFromComp(this.scene, spriteComp);
+      } else {
+        spriteComp = this.mobSpriteComps[i];
+      }
+
+      // Mob logic by type
+      switch (mob.type) {
+        case EMobType.Dummy:
+          break;
+
+        default:
+          break;
+      }
+
+      let t = spriteComp.node!.transform as Transform2D;
+      t.x = mob.pos.x;
+      t.y = mob.pos.y;
+    }
+
+    // Remove leftover unit sprites
+    let leftoverMobSprites = this.mobSpriteComps.splice(this.state.mobs.length);
+    for (let sprite of leftoverMobSprites) {
       this.scene.removeNode(sprite.node!);
     }
   }

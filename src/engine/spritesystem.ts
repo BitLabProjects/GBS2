@@ -59,12 +59,12 @@ export class SpriteSystem extends EngineSystemWithTrackers {
 
   protected onComponentChangedOrRemoved = (comp: Component, isDelete: boolean) => {
     let spriteComp = comp as SpriteComp;
-    let idxTex = this.textures.indexOf(spriteComp.texture);
+    let idxTex = this.textures.indexOf(spriteComp.sprite.texture);
     if (idxTex < 0) {
       // Not found, if this is a delete it's ok, just exit
       if (isDelete) return;
       // Otherwise add it
-      this.textures.push(spriteComp.texture);
+      this.textures.push(spriteComp.sprite.texture);
       idxTex = this.textures.length - 1;
       this.componentsForTexture[idxTex] = [];
       // Will be filled on each update
@@ -121,8 +121,8 @@ export class SpriteSystem extends EngineSystemWithTrackers {
         instanceData[offset + 6] = spriteComp.color.a;
         instanceData[offset + 7] = transform.scaleX;
         instanceData[offset + 8] = transform.scaleY;
-        instanceData[offset + 9] = spriteComp.offset.x;
-        instanceData[offset + 10] = spriteComp.offset.y;
+        instanceData[offset + 9] = spriteComp.sprite.offset.x;
+        instanceData[offset + 10] = spriteComp.sprite.offset.y;
         offset += geometryInstances.entriesPerInstance;
       }
       geometryInstances.updateBuffer();
