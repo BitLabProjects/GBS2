@@ -74,6 +74,7 @@ export class SpriteSystem extends EngineSystemWithTrackers {
         { name: "a_color", length: 4 },
         { name: "a_scale", length: 2 },
         { name: "a_offset", length: 2 },
+        { name: "a_texrect", length: 4 },
       ]);
     }
 
@@ -123,6 +124,10 @@ export class SpriteSystem extends EngineSystemWithTrackers {
         instanceData[offset + 8] = transform.scaleY;
         instanceData[offset + 9] = spriteComp.sprite.offset.x;
         instanceData[offset + 10] = spriteComp.sprite.offset.y;
+        instanceData[offset + 11] = spriteComp.sprite.textureRect.x;
+        instanceData[offset + 12] = spriteComp.sprite.textureRect.y;
+        instanceData[offset + 13] = spriteComp.sprite.textureRect.width;
+        instanceData[offset + 14] = spriteComp.sprite.textureRect.height;
         offset += geometryInstances.entriesPerInstance;
       }
       geometryInstances.updateBuffer();
@@ -148,6 +153,7 @@ export class SpriteMaterial extends Material {
        in vec4 a_color;
        in vec2 a_scale;
        in vec2 a_offset;
+       in vec4 a_texrect;
        
        // uniforms automatically filled by engine, if present
        uniform vec2 u_viewport;
@@ -164,10 +170,9 @@ export class SpriteMaterial extends Material {
                              a_pos.x,                   a_pos.y,   1.0
          );
    
-         // Scale position from [0, 1] to [0, sprite_width] and [0, sprite_height]
-         vec2 texSize = vec2(textureSize(uSampler, 0));
-         vec2 pos_Lcs = vec2(a_position.x * texSize.x,
-                             a_position.y * texSize.y);
+         // Scale position from [0, 1] to [0, width] and [0, height]
+         vec2 pos_Lcs = vec2(a_position.x * a_texrect.z,
+                             a_position.y * a_texrect.w);
                              
          // Apply pixel offset to center the sprite relative to its reference point
          pos_Lcs -= a_offset;
@@ -187,7 +192,8 @@ export class SpriteMaterial extends Material {
    
          gl_Position = vec4(pos_Hcs, 0.0, 1.0);
          
-         v_uv = a_position;
+         vec2 texelSize = 1.0 / vec2(textureSize(uSampler, 0));
+         v_uv = a_texrect.xy * texelSize + a_position * a_texrect.zw * texelSize;
          v_color = a_color;
        }
       `,

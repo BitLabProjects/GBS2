@@ -10,14 +10,14 @@ export class Sprite {
   textureRect: Rect;
   offset: Vect;
 
-  constructor(texture: Texture, offset?: Vect, textureRect?: Rect) {
+  constructor(texture: Texture, textureRect: Rect, offset?: Vect) {
     this._texture = texture;
-    this.textureRect = textureRect ?? new Rect(0, 0, -1, -1);
+    this.textureRect = textureRect;
     this.offset = offset ?? new Vect(0, 0);
   }
 
   clone(): Sprite {
-    return new Sprite(this._texture, this.offset.clone(), this.textureRect.clone());
+    return new Sprite(this._texture, this.textureRect.clone(), this.offset.clone());
   }
 
   // TODO Allow changing texture at runtime by signalling a change to the SpriteSystem inside the texture setter
@@ -26,7 +26,7 @@ export class Sprite {
   public get spriteRect(): Rect {
     let offX = 4;
     let offY = 0;
-    return new Rect(-offX, -offY, this.texture.width, this.texture.height);
+    return new Rect(-offX, -offY, this.textureRect.width, this.textureRect.height);
   }
 }
 

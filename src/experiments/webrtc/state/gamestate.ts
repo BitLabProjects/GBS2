@@ -44,6 +44,6 @@ export enum EMobType {
   Dummy = 1,
 }
 export class MobState {
-  constructor(public type: EMobType, public pos: Vect) {
+  constructor(public type: EMobType, public pos: Vect, public hitTime: number) {
   }
 }

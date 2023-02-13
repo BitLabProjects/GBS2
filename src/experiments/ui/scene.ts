@@ -26,9 +26,7 @@ export class UIScene extends Scene {
     this.circleBottomLeft.transformUI.alignV = Align.End;
     this.circleBottomLeft.transformUI.width = 128;
     this.circleBottomLeft.transformUI.height = 128;
-    let circleBottomLeftSpr = new SpriteComp(new Sprite(tex));
-    circleBottomLeftSpr.color = new Color(0.8, 0.8, 1, 1);
-    circleBottomLeftSpr.sprite.textureRect = new Rect(0, 0, 128, 128);
+    let circleBottomLeftSpr = new SpriteComp(new Sprite(tex, new Rect(0, 0, 128, 128)), new Color(0.8, 0.8, 1, 1));
     this.circleBottomLeft.addComponent(circleBottomLeftSpr);
     this.circleBottomLeft.addComponent(new DraggableComponent());
 
@@ -37,9 +35,7 @@ export class UIScene extends Scene {
     this.squareTopRight.transformUI.alignV = Align.Begin;
     this.squareTopRight.transformUI.width = 128;
     this.squareTopRight.transformUI.height = 128;
-    let squareTopRightSpr = new SpriteComp(new Sprite(tex));
-    squareTopRightSpr.color = new Color(1, 0.8, 0.8, 1);
-    squareTopRightSpr.sprite.textureRect = new Rect(128, 0, 128, 128);
+    let squareTopRightSpr = new SpriteComp(new Sprite(tex, new Rect(128, 0, 128, 128)), new Color(1, 0.8, 0.8, 1));
     this.squareTopRight.addComponent(squareTopRightSpr);
     this.squareTopRight.addComponent(new DraggableComponent());
 
@@ -48,9 +44,7 @@ export class UIScene extends Scene {
     this.rhombusTopRight.transformUI.alignV = Align.Middle;
     this.rhombusTopRight.transformUI.width = 128;
     this.rhombusTopRight.transformUI.height = 128;
-    let rhombusTopRightSpr = new SpriteComp(new Sprite(tex));
-    rhombusTopRightSpr.color = new Color(0.8, 1, 0.8, 1);
-    rhombusTopRightSpr.sprite.textureRect = new Rect(0, 128, 128, 128);
+    let rhombusTopRightSpr = new SpriteComp(new Sprite(tex, new Rect(0, 128, 128, 128)), new Color(0.8, 1, 0.8, 1));
     this.rhombusTopRight.addComponent(rhombusTopRightSpr);
     this.rhombusTopRight.addComponent(new DraggableComponent());
   }
@@ -84,7 +78,7 @@ export class DraggableComponent extends Component {
       }
     } else {
       // Search for a touch starting now that's inside our bounds
-      for(let touch of tea.touches) {
+      for (let touch of tea.touches) {
         if (touch.state === TouchState.Press && nodeui.transformUI.bounds.isInside(touch.pos)) {
           this.touchId = touch.id;
           this.downPos = touch.pos.clone();

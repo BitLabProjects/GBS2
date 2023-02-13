@@ -36,9 +36,7 @@ export class JoystickComp extends Component implements IInputHandler {
     this.joystickCircle.transformUI.height = 80;
     //this.joystickCircle.transformUI.renderTransform = new Vect(20, -20);
     this.joystickCircle.transformUI.margin = Margin.uniform(50);
-    let circleBottomLeftSpr = new SpriteComp(new Sprite(tex));
-    circleBottomLeftSpr.color = new Color(0.4, 0.4, 0.4, 0.4 );
-    circleBottomLeftSpr.sprite.textureRect = new Rect(0, 0, 128, 128);
+    let circleBottomLeftSpr = new SpriteComp(new Sprite(tex, new Rect(0, 0, 128, 128)), new Color(0.4, 0.4, 0.4, 0.4));
     this.joystickCircle.addComponent(circleBottomLeftSpr);
   }
 
