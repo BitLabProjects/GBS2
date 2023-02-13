@@ -73,6 +73,7 @@ export class SpriteSystem extends EngineSystemWithTrackers {
         { name: "a_angle", length: 1 },
         { name: "a_color", length: 4 },
         { name: "a_scale", length: 2 },
+        { name: "a_offset", length: 2 },
       ]);
     }
 
@@ -120,6 +121,8 @@ export class SpriteSystem extends EngineSystemWithTrackers {
         instanceData[offset + 6] = spriteComp.color.a;
         instanceData[offset + 7] = transform.scaleX;
         instanceData[offset + 8] = transform.scaleY;
+        instanceData[offset + 9] = spriteComp.offset.x;
+        instanceData[offset + 10] = spriteComp.offset.y;
         offset += geometryInstances.entriesPerInstance;
       }
       geometryInstances.updateBuffer();
@@ -144,6 +147,7 @@ export class SpriteMaterial extends Material {
        in float a_angle;
        in vec4 a_color;
        in vec2 a_scale;
+       in vec2 a_offset;
        
        // uniforms automatically filled by engine, if present
        uniform vec2 u_viewport;
@@ -166,8 +170,7 @@ export class SpriteMaterial extends Material {
                              a_position.y * texSize.y);
                              
          // Apply pixel offset to center the sprite relative to its reference point
-         vec2 pixel_offset = vec2(4.0, 0.0);
-         pos_Lcs -= pixel_offset;
+         pos_Lcs -= a_offset;
        
          // Apply Lcs To Wcs matrix
          vec2 pos_Wcs = (LcsToWcsMatrix * vec3(pos_Lcs, 1.0)).xy;

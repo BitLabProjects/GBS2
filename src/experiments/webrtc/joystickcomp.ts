@@ -3,6 +3,7 @@ import { Align, Component, Margin, NodeUI, TransformUI } from "../../engine/node
 import { SpriteComp } from "../../engine/spritecomp";
 import { Texture } from "../../engine/texture";
 import { TouchDragHandler } from "../../engine/touchdraghandler";
+import { Color } from "../../utils/color";
 import { Rect } from "../../utils/rect";
 import { Vect } from "../../utils/vect";
 
@@ -36,7 +37,7 @@ export class JoystickComp extends Component implements IInputHandler {
     //this.joystickCircle.transformUI.renderTransform = new Vect(20, -20);
     this.joystickCircle.transformUI.margin = Margin.uniform(50);
     let circleBottomLeftSpr = new SpriteComp(tex);
-    circleBottomLeftSpr.color = { r: 0.4, g: 0.4, b: 0.4, a: 0.4 };
+    circleBottomLeftSpr.color = new Color(0.4, 0.4, 0.4, 0.4 );
     circleBottomLeftSpr.textureRect = new Rect(0, 0, 128, 128);
     this.joystickCircle.addComponent(circleBottomLeftSpr);
   }

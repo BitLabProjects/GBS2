@@ -81,8 +81,8 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
   private unitSprites: SpriteComp[];
   private projectileSprites: SpriteComp[];
   private deadUnitSprites: SpriteComp[];
-  private unitTextures: Texture[];
-  private projectileTexture: Texture;
+  private unitSpritePrefabs: SpriteComp[];
+  private projectileSpritePrefab: SpriteComp;
 
   keys: { [key: string]: KeyState } = {};
 
@@ -102,11 +102,10 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     this.projectileSprites = [];
     this.deadUnitSprites = [];
 
-    this.unitTextures = [
-      Texture.createFromUrl(this.scene.engine, `flocking/unit1.png`),
-      Texture.createFromUrl(this.scene.engine, `flocking/unit2.png`)
-    ]
-    this.projectileTexture = Texture.createFromUrl(this.scene.engine, `webrtc/bullet1.png`)
+    this.unitSpritePrefabs = [];
+    this.unitSpritePrefabs.push(new SpriteComp(Texture.createFromUrl(this.scene.engine, `flocking/unit1.png`), undefined, new Vect(4, 0)));
+    this.unitSpritePrefabs.push(new SpriteComp(Texture.createFromUrl(this.scene.engine, `flocking/unit2.png`), undefined, new Vect(6, 0)));
+    this.projectileSpritePrefab = new SpriteComp(Texture.createFromUrl(this.scene.engine, `webrtc/bullet1.png`), undefined, new Vect(3, 3));
 
     this.draw();
 
@@ -225,8 +224,11 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
         // Fire
         if (dir) {
+          let pos = unitState.pos.clone();
+          pos.addScaled(this.unitSprites[player.getID()].spriteRect.center, 1);
+          pos.addScaled(dir, 10);
           this.state.projectiles.push(new ProjectileState(
-            new Vect(unitState.pos.x + dir.x * 10, unitState.pos.y + dir.y * 10),
+            pos,
             new Vect(dir.x * 360, dir.y * 360),
             60 * 3, player.getID()));
           unitState.coolDown = 0.5;
@@ -235,18 +237,17 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     }
 
     for (let [i, projectile] of this.state.projectiles.entries()) {
-      projectile.pos.addScaled(projectile.vel, deltaTime);
-      projectile.life -= 1;
+      let projectileDelta = projectile.vel.clone();
+      projectileDelta.scale(deltaTime);
 
       for (let [j, unit] of this.state.units.entries()) {
         if (projectile.playerId === j) {
           continue;
         }
-        //let delta = projectile.pos.getSubtracted(unit.pos);
-        //if (delta.length < 5) {
-        let projectileDir = projectile.vel.clone();
-        projectileDir.scale(deltaTime);
-        if (unit.pos.distanceFromSegment(projectile.pos, projectileDir) < 10) {
+        let spriteRect = this.unitSprites[j].spriteRect;
+        let unitCenter = unit.pos.clone();
+        unitCenter.addScaled(spriteRect.center, 1);
+        if (unitCenter.distanceFromSegment(projectile.pos, projectileDelta) < 10) {
           projectile.life = 0;
           unit.knock = projectile.vel.clone();
           unit.knock.scale(0.8);
@@ -268,6 +269,9 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
       if (projectile.life <= 0) {
         this.state.projectiles.splice(i, 1);
+      } else {
+        projectile.pos.addScaled(projectileDelta, 1);
+        projectile.life -= 1;
       }
     }
 
@@ -285,7 +289,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     for (let [i, unit] of this.state.units.entries()) {
       let spriteComp: SpriteComp;
       if (this.unitSprites.length <= i) {
-        spriteComp = new SpriteComp(this.unitTextures[i]);
+        spriteComp = this.unitSpritePrefabs[i].clone();
         this.unitSprites.push(spriteComp);
         Node.createFromComp(this.scene, spriteComp);
       } else {
@@ -313,7 +317,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     for (let [i, projectile] of this.state.projectiles.entries()) {
       let spriteComp: SpriteComp;
       if (this.projectileSprites.length <= i) {
-        spriteComp = new SpriteComp(this.projectileTexture);
+        spriteComp = this.projectileSpritePrefab.clone();
         this.projectileSprites.push(spriteComp);
         Node.createFromComp(this.scene, spriteComp);
       } else {
@@ -333,7 +337,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     for (let [i, unit] of this.state.deadUnits.entries()) {
       let spriteComp: SpriteComp;
       if (this.deadUnitSprites.length <= i) {
-        spriteComp = new SpriteComp(this.unitTextures[unit.playerId]);
+        spriteComp = this.unitSpritePrefabs[unit.playerId].clone();
         this.deadUnitSprites.push(spriteComp);
         Node.createFromComp(this.scene, spriteComp);
       } else {

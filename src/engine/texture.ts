@@ -1,12 +1,21 @@
 import { Engine } from "./engine";
 
 export class Texture {
-  constructor(public readonly texture: WebGLTexture) {
+  constructor(public readonly texture: WebGLTexture,
+              private _width: number, private _height: number) {
+  }
+
+  get width(): number {
+    return this._width;
+  }
+  get height(): number {
+    return this._height;
   }
 
   static createFromUrl(engine: Engine, url: string, flip: boolean = true) {
     let gl = engine.gl;
     const texture = gl.createTexture()!;
+    let returnValue = new Texture(texture, 1, 1);
     gl.bindTexture(gl.TEXTURE_2D, texture);
   
     // Because images have to be downloaded over the internet
@@ -51,9 +60,11 @@ export class Texture {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      returnValue._width = image.naturalWidth;
+      returnValue._height = image.naturalHeight;
     };
     image.src = url;
   
-    return new Texture(texture);
+    return returnValue;
   }
 }
