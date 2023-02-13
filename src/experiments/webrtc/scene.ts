@@ -242,8 +242,11 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
         if (projectile.playerId === j) {
           continue;
         }
-        let delta = projectile.pos.getSubtracted(unit.pos);
-        if (delta.length < 5) {
+        //let delta = projectile.pos.getSubtracted(unit.pos);
+        //if (delta.length < 5) {
+        let projectileDir = projectile.vel.clone();
+        projectileDir.scale(deltaTime);
+        if (unit.pos.distanceFromSegment(projectile.pos, projectileDir) < 10) {
           projectile.life = 0;
           unit.knock = projectile.vel.clone();
           unit.knock.scale(0.8);
