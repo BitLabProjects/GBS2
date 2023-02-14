@@ -25,7 +25,7 @@ export abstract class GameWrapper<TInput extends NetplayInput<TInput>> {
     this.stats = document.createElement("div");
     this.stats.style.zIndex = "1";
     this.stats.style.position = "absolute";
-    this.stats.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+    this.stats.style.backgroundColor = "rgba(0, 0, 0, 0.2)";
     this.stats.style.color = "white";
     this.stats.style.padding = "5px";
     this.stats.style.display = "none";
