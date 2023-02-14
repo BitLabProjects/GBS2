@@ -1,7 +1,5 @@
 import * as Peer from "peerjs";
-import { DefaultInput, DefaultInputReader } from "./defaultinput";
 import StatCounter from "../utils/statcounter";
-import { LockstepNetcode } from "./netcode/lockstep";
 import { NetplayInput, NetplayPlayer, NetplayState } from "./types";
 
 import * as log from "loglevel";
@@ -18,8 +16,8 @@ export class RollbackWrapper<TInput extends NetplayInput<TInput>> extends GameWr
 
   rollbackNetcode?: RollbackNetcode<Game<TInput>, TInput>;
 
-  constructor(game: Game<TInput>, canvas: HTMLCanvasElement) {
-    super(game, canvas);
+  constructor(game: Game<TInput>) {
+    super(game);
   }
 
   getInitialInputs(

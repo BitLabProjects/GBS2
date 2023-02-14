@@ -18,8 +18,7 @@ export abstract class GameWrapper<TInput extends NetplayInput<TInput>> {
   /** The floating menu used to select a match. */
   menu: HTMLDivElement;
 
-  constructor(game: Game<TInput>,
-    canvas: HTMLCanvasElement) {
+  constructor(game: Game<TInput>) {
     this.game = game;
 
     // Create stats UI
@@ -99,16 +98,6 @@ export abstract class GameWrapper<TInput extends NetplayInput<TInput>> {
       } else {
         // We are host, so we need to show a join link.
         log.info("Showing join link.");
-
-        /*
-        let joinURL = `${window.location.href}#room=${id}`;
-        this.menu.innerHTML = `<div>Join URL (Open in a new window or send to a friend): <a href="${joinURL}">${joinURL}<div>`;
-
-        // Add a QR code for joining.
-        const qrCanvas = document.createElement("canvas");
-        this.menu.appendChild(qrCanvas);
-        QRCode.toCanvas(qrCanvas, joinURL);
-        */
 
         // Construct the players array.
         const players: Array<NetplayPlayer> = [

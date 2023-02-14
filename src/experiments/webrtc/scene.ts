@@ -31,7 +31,7 @@ export class WebRTCSceneHost extends Scene {
 
     let gameComponent = new SimpleGame();
     Node.createFromComp(this, gameComponent);
-    new RollbackWrapper(gameComponent, engine.canvas).start(roomName, false);
+    new RollbackWrapper(gameComponent).start(roomName, false);
   }
 }
 
@@ -41,7 +41,7 @@ export class WebRTCScene extends Scene {
 
     let gameComponent = new SimpleGame();
     Node.createFromComp(this, gameComponent);
-    new RollbackWrapper(gameComponent, engine.canvas).start(roomName, true);
+    new RollbackWrapper(gameComponent).start(roomName, true);
   }
 }
 
