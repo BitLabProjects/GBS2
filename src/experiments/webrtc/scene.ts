@@ -15,6 +15,7 @@ import { Rect } from "../../utils/rect";
 import { Vect } from "../../utils/vect";
 import { FullScreenQuad } from "../flocking/fullscreenquad";
 import { JoystickComp } from "./joystickcomp";
+import { FollowCameraComp } from "./scene/followcameracomp";
 import { IStateComponent } from "./scene/istatecomp";
 import { MobComp } from "./scene/mobcomp";
 import { Resources } from "./scene/resources";
@@ -22,11 +23,12 @@ import { UnitComp } from "./scene/unitcomp";
 import { DeadUnitState, EMobType, GameState, MobState, ProjectileState, UnitState } from "./state/gamestate";
 //import { JoystickComp } from "./JoystickComp";
 
+const worldBounds: Rect = new Rect(-400, -400, 800, 800);
+
 export class WebRTCSceneHost extends Scene {
   constructor(engine: Engine, roomName: string) {
     super(engine);
 
-    Node.createFromComp(this, new FullScreenQuad());
     let gameComponent = new SimpleGame();
     Node.createFromComp(this, gameComponent);
     new RollbackWrapper(gameComponent, engine.canvas).start(roomName, false);
@@ -37,7 +39,6 @@ export class WebRTCScene extends Scene {
   constructor(engine: Engine, roomName: string) {
     super(engine);
 
-    Node.createFromComp(this, new FullScreenQuad());
     let gameComponent = new SimpleGame();
     Node.createFromComp(this, gameComponent);
     new RollbackWrapper(gameComponent, engine.canvas).start(roomName, true);
@@ -64,13 +65,20 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
   private joystickCompLeft: JoystickComp;
   private joystickCompRight: JoystickComp;
 
+  private mapBackgroundComp: MapBackgroundComp;
+  private followCameraComp: FollowCameraComp;
+  private currentPlayerId: number;
+
   private readonly maxLife: number = 10;
 
   onCreate() {
     this.state = new GameState();
     this.state.units.push(new UnitState(0, new Vect(-150, 0), new Vect(0, 0), new Vect(1, 0), this.maxLife, 0, 0, -1));
     this.state.units.push(new UnitState(1, new Vect(+150, 0), new Vect(0, 0), new Vect(1, 0), this.maxLife, 0, 0, -1));
-    this.state.mobs.push(new MobState(EMobType.Dummy, new Vect(0, 0), 0));
+
+    for(let i=0; i<25; i++) { 
+      this.state.mobs.push(new MobState(EMobType.Dummy, Vect.createRandom(worldBounds), 0));
+    }
     this.unitComps = [];
     this.projectileSpriteComps = [];
     this.deadUnitSprites = [];
@@ -79,6 +87,12 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     this.resources = new Resources(this.scene.engine);
 
     this.projectileSprite = new Sprite(Texture.createFromUrl(this.scene.engine, `webrtc/bullet1.png`), new Rect(0, 0, 6, 6), new Vect(3, 3));
+
+    this.mapBackgroundComp = new MapBackgroundComp();
+    Node.createFromComp(this.scene, this.mapBackgroundComp);
+
+    this.followCameraComp = new FollowCameraComp();
+    Node.createFromComp(this.scene, this.followCameraComp);
 
     this.draw();
 
@@ -163,7 +177,12 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
   tick(playerInputs: Map<NetplayPlayer, DefaultInput>) {
     let deltaTime = 1 / 60; //TODO
 
+    this.currentPlayerId = -1;
     for (const [player, input] of playerInputs.entries()) {
+      if (player.isLocal) {
+        this.currentPlayerId = player.id;
+      }
+
       // Generate player velocity from input keys.
       const vel = new Vect(
           (input.isPressed("ArrowLeft") ? -1 : 0) +
@@ -184,6 +203,8 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
       }
       unitState.pos.x += (vel.x * 50 + unitState.knock.x) * deltaTime;
       unitState.pos.y += (vel.y * 50 + unitState.knock.y) * deltaTime;
+      unitState.pos.x = Math.max(worldBounds.x, Math.min(worldBounds.x + worldBounds.width, unitState.pos.x));
+      unitState.pos.y = Math.max(worldBounds.y, Math.min(worldBounds.y + worldBounds.height, unitState.pos.y));
 
       unitState.knock.scale(0.85);
 
@@ -349,6 +370,11 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     for (let sprite of leftoverDeadUnitSprites) {
       this.scene.removeNode(sprite.node!);
     }
+
+    if (this.currentPlayerId >= 0) {
+      this.followCameraComp.updateFollow(this.state.units[this.currentPlayerId].pos);
+      this.mapBackgroundComp.cameraPos = this.followCameraComp.pos.clone();
+    }
   }
 
   drawSyncComps<TState, TComp extends Component & IStateComponent<TState>>(states: TState[], comps: TComp[], type: { new () : TComp; }) {
@@ -368,5 +394,17 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     for (let comp of leftoverComps) {
       this.scene.removeNode(comp.node!);
     }
+  }
+}
+
+class MapBackgroundComp extends FullScreenQuad {
+  constructor() {
+    super(`
+    //color: output color to modify
+    //pixelPosCenter: current pixel in world coord
+    vec2 deltaPos = pixelPosCenter / vec2(${(worldBounds.width / 2).toFixed(1)}, ${(worldBounds.height / 2).toFixed(1)});
+    float len = clamp(max(abs(deltaPos.x), abs(deltaPos.y)), 0.0, 1.0);
+    color.xyz *= vec3(1.0 - pow(len, 5.0) * 0.8);
+    `);
   }
 }

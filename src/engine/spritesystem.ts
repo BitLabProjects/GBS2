@@ -1,3 +1,5 @@
+import { Vect } from "../utils/vect";
+import { CameraComp } from "./cameracomp";
 import { ComponentTracker, Engine, EngineSystemWithTrackers } from "./engine";
 import { Geometry } from "./geometry";
 import { GeometryInstances } from "./geometryinstances";
@@ -15,6 +17,9 @@ export class SpriteSystem extends EngineSystemWithTrackers {
       this.componentFilter,
       undefined,
       this.onComponentChangedOrRemoved));
+    this.addTracker(new ComponentTracker(
+      engine.genTrackerId(),
+      CameraComp));
 
     this.material = new SpriteMaterial(engine);
     this.textures = []
@@ -99,6 +104,13 @@ export class SpriteSystem extends EngineSystemWithTrackers {
   onUpdate(deltaTime: number): void {
     let gl = this.engine.gl;
 
+    let cameraPos = new Vect(0, 0);
+    let camera = this.trackers[1].components[0] as CameraComp;
+    if (camera instanceof CameraComp) {
+      // If a camera was found, use its position
+      cameraPos = camera.pos.clone();
+    }
+
     for (let idxTex = 0; idxTex < this.textures.length; idxTex += 1) {
       let components = this.componentsForTexture[idxTex];
       // Fill instance data
@@ -132,7 +144,9 @@ export class SpriteSystem extends EngineSystemWithTrackers {
       }
       geometryInstances.updateBuffer();
 
-      this.engine.useMaterial(this.material);
+      this.engine.useMaterial(this.material, [
+        { name: "u_cameraPos", value: cameraPos }
+      ]);
       this.engine.useTexture(this.textures[idxTex], "uSampler");
       this.engine.useGeometry(this.geometry, geometryInstances);
 
@@ -157,6 +171,7 @@ export class SpriteMaterial extends Material {
        
        // uniforms automatically filled by engine, if present
        uniform vec2 u_viewport;
+       uniform vec2 u_cameraPos;
        
        out vec2 v_uv;
        out vec4 v_color;
@@ -180,8 +195,8 @@ export class SpriteMaterial extends Material {
          // Apply Lcs To Wcs matrix
          vec2 pos_Wcs = (LcsToWcsMatrix * vec3(pos_Lcs, 1.0)).xy;
    
-         // Vcs coordinates are equal to Wcs coordinates: the view is fixed and centered on the origin, for now
-         vec2 pos_Vcs = pos_Wcs;
+         // Vcs coordinates are Wcs coordinates transformed relative to camera (translation only, for now)
+         vec2 pos_Vcs = pos_Wcs - u_cameraPos;
    
          // Round to integer pixel
          //pos_Vcs = floor(pos_Vcs);

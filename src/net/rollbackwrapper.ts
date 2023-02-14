@@ -125,22 +125,27 @@ export class RollbackWrapper<TInput extends NetplayInput<TInput>> extends GameWr
     // Start the netcode game loop.
     this.rollbackNetcode!.start();
 
+    let frameCount = 0;
     let animate = () => {
       // Draw state to canvas.
       this.game!.draw();
 
       // Update stats
-      this.stats.innerHTML = `
-        <div>Netcode Algorithm: Rollback</div>
-        <div>Ping: ${this.pingMeasure
-          .average
-          .toFixed(2)} ms +/- ${this.pingMeasure.stddev.toFixed(2)} ms</div>
-        <div>History Size: ${this.rollbackNetcode!.history.length}</div>
-        <div>Frame Number: ${this.rollbackNetcode!.currentFrame()}</div>
-        <div>Largest Future Size: ${this.rollbackNetcode!.largestFutureSize()}</div>
-        <div>Predicted Frames: ${this.rollbackNetcode!.predictedFrames()}</div>
-        <div title="If true, then the other player is running slow, so we wait for them.">Stalling: ${this.rollbackNetcode!.shouldStall()}</div>
-        `;
+      frameCount += 1;
+      if (frameCount === 30) {
+        frameCount = 0;
+        this.stats.innerHTML = `
+          <div>Netcode Algorithm: Rollback</div>
+          <div>Ping: ${this.pingMeasure
+            .average
+            .toFixed(2)} ms +/- ${this.pingMeasure.stddev.toFixed(2)} ms</div>
+          <div>History Size: ${this.rollbackNetcode!.history.length}</div>
+          <div>Frame Number: ${this.rollbackNetcode!.currentFrame()}</div>
+          <div>Largest Future Size: ${this.rollbackNetcode!.largestFutureSize()}</div>
+          <div>Predicted Frames: ${this.rollbackNetcode!.predictedFrames()}</div>
+          <div title="If true, then the other player is running slow, so we wait for them.">Stalling: ${this.rollbackNetcode!.shouldStall()}</div>
+          `;
+      }
 
       // Request another frame.
       requestAnimationFrame(animate);

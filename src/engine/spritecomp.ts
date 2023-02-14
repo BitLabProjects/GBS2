@@ -24,9 +24,7 @@ export class Sprite {
   public get texture(): Texture { return this._texture };
 
   public get spriteRect(): Rect {
-    let offX = 4;
-    let offY = 0;
-    return new Rect(-offX, -offY, this.textureRect.width, this.textureRect.height);
+    return new Rect(-this.offset.x, -this.offset.y, this.textureRect.width, this.textureRect.height);
   }
 }
 

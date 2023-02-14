@@ -1,6 +1,14 @@
+import { Rect } from "./rect";
+
 export class Vect {
   constructor(public x: number, public y: number) {
 
+  }
+
+  static createRandom(rect: Rect) {
+    return new Vect(
+      Math.random() * rect.width + rect.x,
+      Math.random() * rect.height + rect.y);
   }
 
   get length(): number {

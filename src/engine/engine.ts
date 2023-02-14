@@ -7,6 +7,11 @@ import { Scene } from "./scene";
 import { Texture } from "./texture";
 var SPECTOR = require("spectorjs");
 
+export interface IUniformValue {
+  name: string;
+  value: number | Vect;
+}
+
 export class Engine {
   public readonly gl: WebGL2RenderingContext;
   private material: Material;
@@ -276,7 +281,7 @@ export class Engine {
     }
   }
 
-  public useMaterial(material: Material) {
+  public useMaterial(material: Material, uniformValues?: IUniformValue[]) {
     this.material = material;
     this.materialShaderProgram = material.maybeCreate();
     this.gl.useProgram(this.materialShaderProgram);
@@ -288,6 +293,18 @@ export class Engine {
     const viewportUniformLocation = this.gl.getUniformLocation(this.materialShaderProgram, "u_viewport");
     if (viewportUniformLocation) {
       this.gl.uniform2f(viewportUniformLocation, this.canvas.width, this.canvas.height);
+    }
+    if (uniformValues) {
+      for(let uniformValue of uniformValues) {
+        const uniformLocation = this.gl.getUniformLocation(this.materialShaderProgram, uniformValue.name);
+        if (uniformLocation) {
+          if (uniformValue.value instanceof Vect) {
+            this.gl.uniform2f(uniformLocation, uniformValue.value.x, uniformValue.value.y);
+          } else {
+            this.gl.uniform1f(uniformLocation, uniformValue.value);
+          }
+        }
+      }
     }
   }
 

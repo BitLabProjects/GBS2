@@ -1,21 +1,25 @@
+import { Geometry } from '../../engine/geometry';
 import { Material } from '../../engine/material'
 import { Component } from '../../engine/node'
 import { Scene } from '../../engine/scene';
+import { Vect } from '../../utils/vect';
 
 export class FullScreenQuad extends Component {
   material: Material;
+  geometry: Geometry;
+
+  cameraPos: Vect;
 
   private vertexBuffer: WebGLBuffer;
   private elementBuffer: WebGLBuffer;
 
-  constructor() {
+  constructor(private additionalFragmentCode?: string) {
     super();
+    this.cameraPos = new Vect(0, 0);
   }
 
-  maybeCreate(): void {
-    if (this.material) return;
-
-    this.material = new Material(this.scene.engine, 
+  onCreate(): void {
+    this.material = new Material(this.scene.engine,
       `#version 300 es
        precision lowp float;
        in vec2 a_position; 
@@ -30,6 +34,7 @@ export class FullScreenQuad extends Component {
        in vec2 v_position;
        out vec4 color;
        uniform vec2 u_viewport;
+       uniform vec2 u_cameraPos;
  
        /* Noise function from https://github.com/stegu/webgl-noise */
        vec3 mod289(vec3 x) { 
@@ -98,7 +103,7 @@ export class FullScreenQuad extends Component {
        }
  
        void main() {
-         vec2 pixelPosCenter = gl_FragCoord.xy - u_viewport * 0.5;
+         vec2 pixelPosCenter = gl_FragCoord.xy - u_viewport * 0.5 + u_cameraPos;
  
          color = vec4(0.8, 0.95, 0.8, 1.0);
  
@@ -114,6 +119,7 @@ export class FullScreenQuad extends Component {
             color -= vec4(0.05, 0.05, 0.05, 0.0);
            }
          } else if (mod8X.y == 0.0 || mod8Y.y == 0.0) {
+            // Grid line
             color -= vec4(0.02, 0.02, 0.02, 0.0);
          } else {
            // Inner pixel
@@ -122,62 +128,39 @@ export class FullScreenQuad extends Component {
            n = 0.5 + 0.5 * n;
            color -= vec4(vec3(n * 0.06), 0.0);
          }
+         ${this.additionalFragmentCode ?? ""}
        }
       `);
-    this.material.maybeCreate();
     let gl = this.scene.engine.gl;
 
-    // Create the arrays of inputs for the vertex shaders
-    const quadVertices = new Float32Array(2 * 4);
+    // Create the full screen quad geometry
+    const vertices = new Float32Array(2 * 4);
+    vertices[0 * 2 + 0] = -1.0;
+    vertices[0 * 2 + 1] = -1.0;
+    vertices[1 * 2 + 0] = -1.0;
+    vertices[1 * 2 + 1] = +1.0;
+    vertices[2 * 2 + 0] = +1.0;
+    vertices[2 * 2 + 1] = +1.0;
+    vertices[3 * 2 + 0] = +1.0;
+    vertices[3 * 2 + 1] = -1.0;
+
     const indices = new Uint16Array(3 * 2);
-
-    // Rectangle Coordinates
-    quadVertices[0 * 2 + 0] = -1.0;
-    quadVertices[0 * 2 + 1] = -1.0;
-    quadVertices[1 * 2 + 0] = -1.0;
-    quadVertices[1 * 2 + 1] = +1.0;
-    quadVertices[2 * 2 + 0] = +1.0;
-    quadVertices[2 * 2 + 1] = +1.0;
-    quadVertices[3 * 2 + 0] = +1.0;
-    quadVertices[3 * 2 + 1] = -1.0;
-
     indices[0] = 0;
     indices[1] = 1;
     indices[2] = 2;
     indices[3] = 2;
     indices[4] = 0;
     indices[5] = 3;
-
-    this.vertexBuffer = gl.createBuffer()!;
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, quadVertices, gl.STATIC_DRAW);
-    const posLocation = gl.getAttribLocation(this.material.maybeCreate(), "a_position");
-    gl.vertexAttribPointer(posLocation, 2, gl.FLOAT, false, 2 * 4, 0);
-    gl.enableVertexAttribArray(posLocation);
-    gl.vertexAttribDivisor(posLocation, 0);
-
-    this.elementBuffer = gl.createBuffer()!;
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.elementBuffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+    this.geometry = new Geometry(this.scene.engine, vertices, indices);
   }
 
   onUpdate(deltaTime: number): void {
-    this.maybeCreate();
-
     let gl = this.scene.engine.gl;
 
-    this.scene.engine.useMaterial(this.material);
-    this.bindBuffers(gl);
+    this.scene.engine.useMaterial(this.material, [
+      { name: "u_cameraPos", value: this.cameraPos }
+    ]);
+    this.scene.engine.useGeometry(this.geometry);
     gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
-  }
-
-  private bindBuffers(gl: WebGL2RenderingContext) {
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
-    const posLocation = gl.getAttribLocation(this.material.maybeCreate(), "a_position");
-    gl.vertexAttribPointer(posLocation, 2, gl.FLOAT, false, 2 * 4, 0);
-    gl.enableVertexAttribArray(posLocation);
-    gl.vertexAttribDivisor(posLocation, 0);
-
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.elementBuffer);
   }
 }
