@@ -6,7 +6,8 @@ import { Texture } from "../../engine/texture";
 import { UIRootComp } from "../../engine/uirootcomp";
 import { DefaultInput, KeyState } from "../../net/defaultinput";
 import { Game } from "../../net/game";
-import { RollbackWrapper } from "../../net/rollbackwrapper";
+import { RollbackClient } from "../../net/rollbackClient";
+import { RollbackHost } from "../../net/rollbackHost";
 import { NetplayPlayer, SerializedState } from "../../net/types";
 import { ObjUtils, TypeDescriptor } from "../../utils/objutils";
 import { Rect } from "../../utils/rect";
@@ -29,7 +30,7 @@ export class WebRTCSceneHost extends Scene {
 
     let gameComponent = new SimpleGame();
     Node.createFromComp(this, gameComponent);
-    new RollbackWrapper(gameComponent).start(roomName, false);
+    new RollbackHost(gameComponent).start(roomName);
   }
 }
 
@@ -39,7 +40,7 @@ export class WebRTCScene extends Scene {
 
     let gameComponent = new SimpleGame();
     Node.createFromComp(this, gameComponent);
-    new RollbackWrapper(gameComponent).start(roomName, true);
+    new RollbackClient(gameComponent).start(roomName);
   }
 }
  
