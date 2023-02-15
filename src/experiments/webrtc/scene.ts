@@ -7,9 +7,7 @@ import { UIRootComp } from "../../engine/uirootcomp";
 import { DefaultInput, KeyState } from "../../net/defaultinput";
 import { Game } from "../../net/game";
 import { RollbackWrapper } from "../../net/rollbackwrapper";
-import { TouchControl, VirtualJoystick } from "../../net/touchcontrols";
 import { NetplayPlayer, SerializedState } from "../../net/types";
-import { clone } from "../../net/utils";
 import { ObjUtils, TypeDescriptor } from "../../utils/objutils";
 import { Rect } from "../../utils/rect";
 import { Vect } from "../../utils/vect";
@@ -44,9 +42,9 @@ export class WebRTCScene extends Scene {
     new RollbackWrapper(gameComponent).start(roomName, true);
   }
 }
-
+ 
 class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler {
-  timestep: number = 1000 / 60;
+  timestep: number = 1000 / 30;
   deterministic: boolean = true;
 
   private unitComps: UnitComp[];
@@ -114,33 +112,14 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
   }
 
   serialize(): SerializedState {
-    return clone(this.state);
+    return ObjUtils.cloneDiscardingTypes(this.state);
   }
 
   /**
    * By default, use the auto deserializer.
    */
   deserialize(value: SerializedState): void {
-    let td = new TypeDescriptor(GameState);
-    let unitTd = new TypeDescriptor(UnitState, true);
-    unitTd.props["pos"] = new TypeDescriptor(Vect);
-    unitTd.props["knock"] = new TypeDescriptor(Vect);
-    unitTd.props["dir"] = new TypeDescriptor(Vect);
-    td.props["units"] = unitTd;
-
-    let projectileTd = new TypeDescriptor(ProjectileState, true);
-    projectileTd.props["pos"] = new TypeDescriptor(Vect);
-    projectileTd.props["vel"] = new TypeDescriptor(Vect);
-    td.props["projectiles"] = projectileTd;
-    
-    let deadUnitTd = new TypeDescriptor(DeadUnitState, true); 
-    td.props["deadUnits"] = deadUnitTd;
-
-    let mobTd = new TypeDescriptor(MobState, true);
-    mobTd.props["pos"] = new TypeDescriptor(Vect);
-    td.props["mobs"] = mobTd;
-
-    this.state = ObjUtils.cloneUsingTypeDescriptor(value, td);
+    this.state = ObjUtils.cloneUsingTypeDescriptor(value, GameState.TypeDescriptor);
   }
 
   init(players: NetplayPlayer[]): void {
@@ -168,14 +147,14 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
   }
   
   onKeyUpdate(kea: KeyEventArgs): void {
-    this.keys = ObjUtils.clone(kea.keys);
+    this.keys = ObjUtils.cloneDiscardingTypes(kea.keys);
   }
 
   // The tick function takes a map of Player -> Input and
   // simulates the game forward. Think of it like making
   // a local multiplayer game with multiple controllers.
   tick(playerInputs: Map<NetplayPlayer, DefaultInput>) {
-    let deltaTime = 1 / 60; //TODO
+    let deltaTime = this.timestep / 1000;
 
     this.currentPlayerId = -1;
     for (const [player, input] of playerInputs.entries()) {
@@ -187,7 +166,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
       const vel = new Vect(
           (input.isPressed("ArrowLeft") ? -1 : 0) +
           (input.isPressed("ArrowRight") ? 1 : 0) +
-          (input.touchControls!.joystick1.x),
+          (input.touchControls!.joystick1.x), 
           (input.isPressed("ArrowDown") ? -1 : 0) +
           (input.isPressed("ArrowUp") ? 1 : 0) +
           (input.touchControls!.joystick1.y),

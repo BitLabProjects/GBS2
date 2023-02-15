@@ -17,8 +17,9 @@
  */
 
 import { NetplayInput, NetplayPlayer, NetplayState, SerializedState } from "../types";
-import { get, shift, clone } from "../utils";
+import { get, shift } from "../utils";
 import * as log from "loglevel";
+import { ObjUtils } from "../../utils/objutils";
 
 class RollbackHistory<TInput extends NetplayInput<TInput>> {
   /**
@@ -120,7 +121,7 @@ export class RollbackNetcode<
       let currentState = this.history[i];
 
       this.state.tick(this.getStateInputs(currentState.inputs));
-      currentState.state = clone(this.state.serialize());
+      currentState.state = this.state.serialize();
     }
     log.debug(
       `Resimulated ${this.history.length - 1} states after state sync.`
@@ -190,7 +191,7 @@ export class RollbackNetcode<
       }
 
       this.state.tick(this.getStateInputs(currentState.inputs));
-      currentState.state = clone(this.state.serialize());
+      currentState.state = this.state.serialize();
     }
 
     log.debug(
@@ -264,7 +265,7 @@ export class RollbackNetcode<
       historyInputs.set(player, { input, isPrediction: false });
     }
     this.history = [
-      new RollbackHistory(0, clone(this.state.serialize()), historyInputs),
+      new RollbackHistory(0, this.state.serialize(), historyInputs),
     ];
 
     this.futureMap = new Map();
@@ -350,7 +351,7 @@ export class RollbackNetcode<
     this.history.push(
       new RollbackHistory(
         lastState.frame + 1,
-        clone(this.state.serialize()),
+        this.state.serialize(),
         newInputs
       )
     );

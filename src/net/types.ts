@@ -1,4 +1,5 @@
-import { clone, copyfields as copyFields } from "./utils";
+import { ObjUtils } from "../utils/objutils";
+import { copyfields as copyFields } from "./utils";
 
 // Use a specific type only to tag using places, to be self-explanatory
 export type SerializedState = any;
@@ -22,7 +23,7 @@ export abstract class NetplayInput<TInput extends NetplayInput<TInput>> {
    * By default, use the auto serializer.
    */
   serialize(): SerializedState {
-    return clone(this);
+    return ObjUtils.cloneDiscardingTypes(this);
   }
 
   /**

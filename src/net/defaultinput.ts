@@ -1,6 +1,7 @@
 import { NetplayInput } from "./types";
 import * as utils from "./utils";
 import { TouchControl } from "./touchcontrols";
+import { ObjUtils } from "../utils/objutils";
 
 export enum KeyState {
   Released = 0,
@@ -181,12 +182,12 @@ export class DefaultInputReader {
       }
     }
     if (this.mousePosition)
-      input.mousePosition = utils.clone(this.mousePosition);
-    input.touches = utils.clone(this.touches);
+      input.mousePosition = ObjUtils.cloneDiscardingTypes(this.mousePosition);
+      input.touches = ObjUtils.cloneDiscardingTypes(this.touches);
 
     for (let [name, control] of Object.entries(this.touchControls)) {
       input.touchControls = input.touchControls || {};
-      input.touchControls[name] = utils.clone(control.getValue());
+      input.touchControls[name] = ObjUtils.cloneDiscardingTypes(control.getValue());
     }
 
     return input;
