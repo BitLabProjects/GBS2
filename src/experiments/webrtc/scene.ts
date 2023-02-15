@@ -402,9 +402,12 @@ class MapBackgroundComp extends FullScreenQuad {
     super(`
     //color: output color to modify
     //pixelPosCenter: current pixel in world coord
-    vec2 deltaPos = pixelPosCenter / vec2(${(worldBounds.width / 2).toFixed(1)}, ${(worldBounds.height / 2).toFixed(1)});
-    float len = clamp(max(abs(deltaPos.x), abs(deltaPos.y)), 0.0, 1.0);
-    color.xyz *= vec3(1.0 - pow(len, 5.0) * 0.8);
+
+    vec2 worldBoundsHalf = vec2(${(worldBounds.width / 2).toFixed(1)}, ${(worldBounds.height / 2).toFixed(1)});
+    float rectRadius = 50.0;
+    vec2 d = abs(pixelPosCenter) - worldBoundsHalf + vec2(rectRadius);
+    float rectDist = min(max(d.x, d.y), 0.0) + length(max(d, 0.0)) - rectRadius;
+    color.xyz *= vec3(1.0 - clamp(rectDist, 0.0, 50.0) / 50.0 * 0.4);
     `);
   }
 }
