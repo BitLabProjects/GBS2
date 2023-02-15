@@ -198,7 +198,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
       let unitState = this.state.units[player.getID()];
       let velLen = vel.length;
       if (velLen > 0) {
-        unitState.dir = vel.clone();
+        unitState.dir.copy(vel);
         unitState.dir.scale(1 / velLen);
       }
       unitState.pos.x += (vel.x * 50 + unitState.knock.x) * deltaTime;
@@ -252,7 +252,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
           // Hit and knockback
           unit.life -= 1;
           unit.lastHitByPlayerId = projectile.playerId;          
-          unit.knock = projectile.vel.clone();
+          unit.knock.copy(projectile.vel);
           unit.knock.scale(0.8);
         }
       }
@@ -373,7 +373,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
     if (this.currentPlayerId >= 0) {
       this.followCameraComp.updateFollow(this.state.units[this.currentPlayerId].pos);
-      this.mapBackgroundComp.cameraPos = this.followCameraComp.pos.clone();
+      this.mapBackgroundComp.cameraPos.copy(this.followCameraComp.pos);
     }
   }
 

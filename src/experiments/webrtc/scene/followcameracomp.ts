@@ -3,6 +3,6 @@ import { Vect } from "../../../utils/vect";
 
 export class FollowCameraComp extends CameraComp {
   updateFollow(dstPos: Vect) {
-    this.pos = dstPos.clone();
+    this.pos.copy(dstPos);
   }
 }

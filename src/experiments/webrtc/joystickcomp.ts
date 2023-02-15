@@ -18,11 +18,12 @@ export class JoystickComp extends Component implements IInputHandler {
     this.touchDragHandler = new TouchDragHandler(
       (point: Vect) => this.joystickCircle.transformUI.bounds.isInside(point),
       (point: Vect, delta: Vect) => {
-        delta = delta.clone();
-        delta.clampLength(40);
-        this.joystickCircle.transformUI.renderTransform = delta;
-        this.dx = +delta.x / delta.length;
-        this.dy = -delta.y / delta.length;
+        let rtVect = this.joystickCircle.transformUI.renderTransform;
+        rtVect.copy(delta);
+        rtVect.clampLength(40);
+        let rtVectLen = rtVect.length;
+        this.dx = +rtVect.x / rtVectLen;
+        this.dy = -rtVect.y / rtVectLen;
       });
   }
 

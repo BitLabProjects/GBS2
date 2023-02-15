@@ -15,6 +15,11 @@ export class Vect {
     return Math.sqrt(this.x * this.x + this.y * this.y);
   }
 
+  copy(other: Vect) {
+    this.x = other.x;
+    this.y = other.y;
+  }
+
   distanceTo(other: Vect): number {
     let dx = this.x - other.x;
     let dy = this.y - other.y;
