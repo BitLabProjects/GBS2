@@ -4,11 +4,36 @@ import { NetplayInput, NetplayPlayer, NetplayState } from "./types";
 
 import * as log from "loglevel";
 import { Game } from "./game";
-import { RollbackNetcode } from "./netcode/rollback";
+import { IKeyFrameState, RollbackNetcode } from "./netcode/rollback";
 
 import * as getUuidByString from 'uuid-by-string'
 
 const PING_INTERVAL = 100;
+
+export type IRBPMessage = IRBPMessage_Input | IRBPMessage_State | IRBPMessage_Init | IRBPMessage_Ping | IRBPMessage_Pong;
+export interface IRBPMessage_Input {
+  type: "input";
+  frame: number;
+  playerId: number;
+  input: any;
+}
+export interface IRBPMessage_State {
+  type: "state";
+  keyFrameState: IKeyFrameState;
+}
+export interface IRBPMessage_Init {
+  type: "init";
+  initialState: IKeyFrameState;
+  assignedPlayerId: number;
+}
+export interface IRBPMessage_Ping {
+  type: "ping-req";
+  sent_time: number;
+}
+export interface IRBPMessage_Pong {
+  type: "ping-resp";
+  sent_time: number;
+}
 
 export class RollbackBase<TInput extends NetplayInput<TInput>> {
   /** The network stats UI. */

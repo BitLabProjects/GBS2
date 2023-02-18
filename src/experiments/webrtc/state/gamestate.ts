@@ -36,12 +36,14 @@ export class MobState {
 }
 
 export class GameState {
+  time: number;
   units: UnitState[];
   projectiles: ProjectileState[];
   deadUnits: DeadUnitState[];
   mobs: MobState[];
 
   constructor() {
+    this.time = 0;
     this.units = [];
     this.projectiles = [];
     this.deadUnits = [];

@@ -72,12 +72,11 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
   onCreate() {
     this.state = new GameState();
-    this.state.units.push(new UnitState(0, new Vect(-150, 0), new Vect(0, 0), new Vect(1, 0), this.maxLife, 0, 0, -1));
-    this.state.units.push(new UnitState(1, new Vect(+150, 0), new Vect(0, 0), new Vect(1, 0), this.maxLife, 0, 0, -1));
 
     for(let i=0; i<25; i++) { 
-      this.state.mobs.push(new MobState(EMobType.Dummy, Vect.createRandom(worldBounds), 0));
+      this.state.mobs.push(new MobState(EMobType.Dummy, Vect.createRandom(worldBounds), 100000));
     }
+    this.state.mobs.push(new MobState(EMobType.Dummy, new Vect(0, 0), 0));
     this.unitComps = [];
     this.projectileSpriteComps = [];
     this.deadUnitSprites = [];
@@ -123,9 +122,6 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     this.state = ObjUtils.cloneUsingTypeDescriptor(value, GameState.TypeDescriptor);
   }
 
-  init(players: NetplayPlayer[]): void {
-  }
-
   getInput(): DefaultInput {
     let input = this.getStartInput();
     for(let key in this.keys) {
@@ -156,11 +152,20 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
   // a local multiplayer game with multiple controllers.
   tick(playerInputs: Map<NetplayPlayer, DefaultInput>) {
     let deltaTime = this.timestep / 1000;
+    this.state.time += deltaTime;
 
     this.currentPlayerId = -1;
     for (const [player, input] of playerInputs.entries()) {
-      if (player.isLocal) {
-        this.currentPlayerId = player.id;
+      let playerId = player.getID();
+      let unitState = this.state.units[playerId];
+      if (!unitState) {
+        let x = playerId === 0 ? -150 : +150;
+        unitState = new UnitState(playerId, new Vect(x, 0), new Vect(0, 0), new Vect(1, 0), this.maxLife, 0, 0, -1);
+        this.state.units[playerId] = unitState;
+      }
+
+      if (player.isLocalPlayer()) {
+        this.currentPlayerId = playerId;
       }
 
       // Generate player velocity from input keys.
@@ -175,7 +180,6 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
 
       // Apply the velocity to the appropriate player.
-      let unitState = this.state.units[player.getID()];
       let velLen = vel.length;
       if (velLen > 0) {
         unitState.dir.copy(vel);

@@ -18,7 +18,8 @@ export class MobComp extends Component {
 
     //hitTime goes from zero to infinity, the divider must go from 1 to infinity
     let divider = 1 + mob.hitTime * 0.002;
-    let idxFrame = 1 + Math.round(Math.sin(mob.hitTime * 0.1) / divider);
+    // Add 90 degrees to the sin to have an immediate feedback
+    let idxFrame = 1 + Math.round(Math.sin(mob.hitTime * 0.1 + Math.PI * 0.5) / divider);
     this.spriteComp.sprite = resources.mobSprites[mob.type][idxFrame];
 
     let t = this.node!.transform as Transform2D;

@@ -77,4 +77,15 @@ export class ObjUtils {
       dstObj[key] = srcObj[key];
     }
   }
+
+  public static assertIsTrue(value: boolean) {
+    if (!value) {
+      debugger;
+    }
+  }
+  public static assertEquals(expectedValue: any, actualValue: any) {
+    if (expectedValue !== actualValue) {
+      debugger;
+    }
+  }
 }

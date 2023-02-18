@@ -35,26 +35,10 @@ export abstract class NetplayInput<TInput extends NetplayInput<TInput>> {
 }
 
 export class NetplayPlayer {
-  id: number;
-  isLocal: boolean;
-  isHost: boolean;
-
-  constructor(id: number, isLocal: boolean, isHost: boolean) {
-    this.id = id;
-    this.isLocal = isLocal;
-    this.isHost = isHost;
+  constructor(private id: number, private isLocal: boolean) {
   }
   isLocalPlayer(): boolean {
     return this.isLocal;
-  }
-  isRemotePlayer(): boolean {
-    return !this.isLocal;
-  }
-  isServer(): boolean {
-    return this.isHost;
-  }
-  isClient(): boolean {
-    return !this.isHost;
   }
   getID(): number {
     return this.id;

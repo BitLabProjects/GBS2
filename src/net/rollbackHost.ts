@@ -4,16 +4,26 @@ import { NetplayInput, NetplayPlayer, NetplayState } from "./types";
 
 import * as log from "loglevel";
 import { Game } from "./game";
-import { RollbackNetcode } from "./netcode/rollback";
+import { IKeyFrameState, RollbackNetcode } from "./netcode/rollback";
 
 import * as getUuidByString from 'uuid-by-string'
-import { RollbackBase } from "./rollbackBase";
+import { IRBPMessage_Init, IRBPMessage_Input, IRBPMessage_State, RollbackBase } from "./rollbackBase";
 
 const PING_INTERVAL = 100;
 
+interface IClientConnData {
+  conn: Peer.DataConnection;
+  connIsOpen: boolean;
+  playerId: number;
+  initSent: boolean;
+}
+
 export class RollbackHost<TInput extends NetplayInput<TInput>> extends RollbackBase<TInput> {
+  connectedClients: IClientConnData[];
+
   constructor(game: Game<TInput>) {
     super(game);
+    this.connectedClients = [];
   }
 
   start(roomName: string) {
@@ -35,20 +45,11 @@ export class RollbackHost<TInput extends NetplayInput<TInput>> extends RollbackB
       // We are host, so we need to show a join link.
       log.info("Showing join link.");
 
-      // Construct the players array.
-      const players: Array<NetplayPlayer> = [
-        new NetplayPlayer(0, true, true), // Player 0 is us, acting as a host.
-        new NetplayPlayer(1, false, false), // Player 1 is our peer, acting as a client.
-      ];
-
       // Wait for a connection from a client.
       this.peer!.on("connection", (conn: Peer.DataConnection) => {
-        conn.on("error", (err: any) => console.error(err));
-
-        //this.watchRTCStats(conn.peerConnection);
-
-        this.startHost(players, conn);
+        this.onClientConnected(conn);
       });
+      this.startHost();
     });
   }
 
@@ -78,48 +79,106 @@ export class RollbackHost<TInput extends NetplayInput<TInput>> extends RollbackB
     }, 1000);
   }
 
-  startHost(players: Array<NetplayPlayer>, conn: Peer.DataConnection) {
+  startHost() {
     log.info("Starting a rollback host.");
-
-    this.game.init(players);
 
     this.rollbackNetcode = new RollbackNetcode(
       true,
       this.game,
-      players,
-      this.getInitialInputs(players),
+      undefined,
+      0,
       100,
       this.pingMeasure,
       this.game.timestep,
+      () => this.game.getStartInput(),
       () => this.game.getInput(),
-      (frame, input) => {
-        conn.send({ type: "input", frame: frame, input: input.serialize() });
+      (frame, playerId, input) => {
+        //Send the input to every player
+        let msg: IRBPMessage_Input = {
+          type: "input",
+          frame: frame,
+          playerId: playerId,
+          input: input.serialize()
+        };
+        for (let clientConnData of this.connectedClients) {
+          if (!clientConnData.connIsOpen || !clientConnData.initSent) {
+            continue;
+          }
+          console.log(`Sending input for frame ${frame} to player ${clientConnData.playerId}`);
+          clientConnData.conn.send(msg);
+        }
       },
-      (frame, state) => {
-        conn.send({ type: "state", frame: frame, state: state });
+      (keyFrameState: IKeyFrameState) => {
+        //Send the official state for the frame to every player
+        for (let clientConnData of this.connectedClients) {
+          if (!clientConnData.connIsOpen) {
+            continue;
+          }
+          if (clientConnData.initSent) {
+            console.log(`Sending state ${keyFrameState.frame} to player ${clientConnData.playerId}`);
+            let msg: IRBPMessage_State = {
+              type: "state",
+              keyFrameState: keyFrameState,
+            };
+            clientConnData.conn.send(msg);
+
+          } else {
+            console.log(`Sending init ${keyFrameState.frame} to player ${clientConnData.playerId}`);
+            clientConnData.initSent = true;
+            let msg: IRBPMessage_Init = {
+              type: "init",
+              initialState: keyFrameState,
+              assignedPlayerId: clientConnData.playerId,
+            };
+            clientConnData.conn.send(msg);
+          }
+        }
       }
     );
 
+    this.startGameLoop();
+  }
+
+  onClientConnected(conn: Peer.DataConnection) {
+    //this.watchRTCStats(conn.peerConnection);
+
+    conn.on("error", (err: any) => console.error(err));
+
+    conn.on("open", () => {
+      this.onClientConnectionOpen(conn);
+    });
+  }
+
+  onClientConnectionOpen(conn: Peer.DataConnection) {
+    console.log("Client has connected... Starting game...");
+    let player = this.rollbackNetcode!.addPlayer();
+    let clientData = {
+      conn: conn,
+      connIsOpen: true,
+      playerId: player.getID(),
+      initSent: false,
+    }
+    this.connectedClients.push(clientData);
+    
     conn.on("data", (data: any) => {
       if (data.type === "input") {
         let input = this.game.getStartInput();
         input.deserialize(data.input);
-        this.rollbackNetcode!.onRemoteInput(data.frame, players![1], input);
+        this.rollbackNetcode!.onRemoteInput(data.frame, data.playerId, input);
+
+      } else if (data.type == "init-done") {
+        // Ok
+
       } else if (data.type == "ping-req") {
         conn.send({ type: "ping-resp", sent_time: data.sent_time });
+
       } else if (data.type == "ping-resp") {
         this.pingMeasure.update(Date.now() - data.sent_time);
       }
     });
 
-    conn.on("open", () => {
-      console.log("Client has connected... Starting game...");
-
-      setInterval(() => {
-        conn.send({ type: "ping-req", sent_time: Date.now() });
-      }, PING_INTERVAL);
-    });
-
-    this.startGameLoop();
+    setInterval(() => {
+      conn.send({ type: "ping-req", sent_time: Date.now() });
+    }, PING_INTERVAL);
   }
 }

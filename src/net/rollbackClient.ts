@@ -7,11 +7,13 @@ import { Game } from "./game";
 import { RollbackNetcode } from "./netcode/rollback";
 
 import * as getUuidByString from 'uuid-by-string'
-import { RollbackBase } from "./rollbackBase";
+import { IRBPMessage, IRBPMessage_Init, IRBPMessage_Input, RollbackBase } from "./rollbackBase";
 
-const PING_INTERVAL = 100;
+const PING_INTERVAL = 1000;
 
 export class RollbackClient<TInput extends NetplayInput<TInput>> extends RollbackBase<TInput> {
+  private conn: Peer.DataConnection;
+
   constructor(game: Game<TInput>) {
     super(game);
   }
@@ -31,12 +33,12 @@ export class RollbackClient<TInput extends NetplayInput<TInput>> extends Rollbac
       console.log("Disconnected");
     };
 
-    this.peer!.on("open", (id: any) => {
+    this.peer.on("open", (id: any) => {
       // We are a client, so connect to the room from the hash.
 
       log.info(`Connecting to room ${roomName}.`);
 
-      const conn = this.peer!.connect(roomUUID as string, {
+      this.conn = this.peer!.connect(roomUUID as string, {
         serialization: "json",
         reliable: true,
         // @ts-ignore
@@ -47,57 +49,70 @@ export class RollbackClient<TInput extends NetplayInput<TInput>> extends Rollbac
         },
       });
 
-      conn.on("error", (err: any) => console.error(err));
+      this.conn.on("error", (err: any) => console.error(err));
 
-      // Construct the players array.
-      const players = [
-        new NetplayPlayer(0, false, true), // Player 0 is our peer, the host.
-        new NetplayPlayer(1, true, false), // Player 1 is us, a client
-      ];
-
-      this.startClient(players, conn);
+      this.startClient();
     });
   }
 
-  startClient(players: Array<NetplayPlayer>, conn: Peer.DataConnection) {
-    log.info("Starting a lockstep client.");
-
-    this.game.init(players);
-    this.rollbackNetcode = new RollbackNetcode(
-      false,
-      this.game!,
-      players,
-      this.getInitialInputs(players),
-      100,
-      this.pingMeasure,
-      this.game.timestep,
-      () => this.game.getInput(),
-      (frame, input) => {
-        conn.send({ type: "input", frame: frame, input: input.serialize() });
-      }
-    );
-
-    conn.on("data", (data: any) => {
+  startClient() {
+    // Having a typed argument does not guarantee the message is properly formatted.
+    // It helps only during development
+    this.conn.on("data", (data: IRBPMessage) => {
       if (data.type === "input") {
         let input = this.game.getStartInput();
         input.deserialize(data.input);
-        this.rollbackNetcode!.onRemoteInput(data.frame, players![0], input);
+        // TODO Le the host tell also the playerId for the input
+        this.rollbackNetcode!.onRemoteInput(data.frame, data.playerId, input);
+
       } else if (data.type === "state") {
-        this.rollbackNetcode!.onStateSync(data.frame, data.state);
+        this.rollbackNetcode!.onStateSync(data.keyFrameState);
+
+      } else if (data.type == "init") {
+        // The init message is sent as the first message after a client connects
+        // It contains the initial state, along with all the players present and relative input for that frame
+        // It also tells the starting frame number and the playerID assigned to the client
+        this.onClientInitFromHost(data);
+        this.conn.send({ type: "init-done" });
+
       } else if (data.type == "ping-req") {
-        conn.send({ type: "ping-resp", sent_time: data.sent_time });
+        this.conn.send({ type: "ping-resp", sent_time: data.sent_time });
+
       } else if (data.type == "ping-resp") {
         this.pingMeasure.update(Date.now() - data.sent_time);
       }
     });
-    conn.on("open", () => {
+    this.conn.on("open", () => {
       console.log("Successfully connected to server... Starting game...");
 
       setInterval(() => {
-        conn.send({ type: "ping-req", sent_time: Date.now() });
+        this.conn.send({ type: "ping-req", sent_time: Date.now() });
       }, PING_INTERVAL);
-
-      this.startGameLoop();
     });
+  }
+
+  onClientInitFromHost(data: IRBPMessage_Init) {
+    this.rollbackNetcode = new RollbackNetcode(
+      false,
+      this.game,
+      data.initialState,
+      data.assignedPlayerId,
+      100,
+      this.pingMeasure,
+      this.game.timestep,
+      () => this.game.getStartInput(),
+      () => this.game.getInput(),
+      (frame, playerId, input) => {
+        let msg: IRBPMessage_Input = {
+          type: "input",
+          frame: frame,
+          playerId: playerId,
+          input: input.serialize()
+        };
+        this.conn.send(msg);
+      }
+    );
+
+    this.startGameLoop();
   }
 }
