@@ -86,6 +86,8 @@ class RollbackHistory<TInput extends NetplayInput<TInput>> {
   }
 }
 
+const DEV: boolean = false;
+
 export class RollbackNetcode<
   TGame extends NetplayState<TInput>,
   TInput extends NetplayInput<TInput>
@@ -117,7 +119,7 @@ export class RollbackNetcode<
 
   onStateSync(keyFrameState: IKeyFrameState) {
     //DEV && assert.isFalse(this.isHost, "Only clients recieve state syncs.");
-    console.log(`Received keyFrame for frame ${keyFrameState.frame}`);
+    DEV && console.log(`Received keyFrame for frame ${keyFrameState.frame}`);
 
     // Cleanup states that we don't need anymore because we have the definitive
     // server state. We have to leave at least one state in order to simulate
@@ -173,17 +175,17 @@ export class RollbackNetcode<
     DEV && assert.isNotEmpty(this.history, `'history' cannot be empty.`);*/
 
     let expectedFrame = get(this.highestFrameReceived, player) + 1;
-    ObjUtils.assertEquals(expectedFrame, frame);
+    DEV && ObjUtils.assertEquals(expectedFrame, frame);
     this.highestFrameReceived.set(player, expectedFrame);
 
     // If this input is for a frame that we haven't even simulated, we need to
     // store it in a queue to pull during our next tick.
     if (frame > this.history[this.history.length - 1].frame) {
-      console.log(`Received future input for player ${playerId}, frame ${frame}`);
+      DEV && console.log(`Received future input for player ${playerId}, frame ${frame}`);
       get(this.futureMap, player).push({ frame: frame, input: input });
       return; // Skip rest of logic in this function.
     }
-    console.log(`Received input for player ${playerId}, frame ${frame}`);
+    DEV && console.log(`Received input for player ${playerId}, frame ${frame}`);
 
     // If we have already simulated a frame F for which we are currently receiving
     // an input, it must be the case that frame F is a prediction. This is because,
@@ -201,7 +203,7 @@ export class RollbackNetcode<
     // Assuming that input messages from a given client are ordered, the
     // first history with a predicted input for this player is also the
     // frame for which we just recieved a message.
-    ObjUtils.assertEquals(this.history[firstPrediction!].frame, frame);
+    DEV && ObjUtils.assertEquals(this.history[firstPrediction!].frame, frame);
 
     // The state before the first prediction is, by definition,
     // not a prediction. There must be one such state.
@@ -291,7 +293,7 @@ export class RollbackNetcode<
       if (!initialKeyFrameState) {
         throw new Error("Expected an initial state for client.");
       }
-      console.log(`Received initial state for frame ${initialKeyFrameState.frame}`);
+      DEV && console.log(`Received initial state for frame ${initialKeyFrameState.frame}`);
     }
 
     this.players = new Map<number, NetplayPlayer>();
@@ -422,7 +424,7 @@ export class RollbackNetcode<
     if (this.lastBroadcastedKeyFrame < thisFrame && thisFrameLocalPlayerInput) {
       // If this frame has not been just sent, then some remote input is missing:
       // Broadcast the new local input to the other players.
-      console.log(`Sent input for frame ${thisFrame}`);
+      DEV && console.log(`Sent input for frame ${thisFrame}`);
       this.broadcastInput(thisFrame, this.localPlayerId, thisFrameLocalPlayerInput);
     }
   }
@@ -507,10 +509,10 @@ export class RollbackNetcode<
   }
 
   checkInvariants() {
-    ObjUtils.assertIsTrue(this.history.length >= 1);
-    ObjUtils.assertIsTrue(this.history[0].allInputsSynced());
+    DEV && ObjUtils.assertIsTrue(this.history.length >= 1);
+    DEV && ObjUtils.assertIsTrue(this.history[0].allInputsSynced());
     // for (let i = 1; i < this.history.length; i++) {
-    //   ObjUtils.assertIsTrue(this.history[i].anyInputPredicted());
+    //   DEV && ObjUtils.assertIsTrue(this.history[i].anyInputPredicted());
     // }
   }
 }
