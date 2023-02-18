@@ -16,6 +16,8 @@ interface IClientConnData {
   connIsOpen: boolean;
   playerId: number;
   initSent: boolean;
+  bytesSent: number;
+  bytesReceived: number;
 }
 
 export class RollbackHost<TInput extends NetplayInput<TInput>> extends RollbackBase<TInput> {
@@ -51,32 +53,6 @@ export class RollbackHost<TInput extends NetplayInput<TInput>> extends RollbackB
       });
       this.startHost();
     });
-  }
-
-  formatRTCStats(stats: RTCStatsReport): string {
-    let output = "";
-    stats.forEach((report) => {
-      output += `<details>`;
-      output += `<summary>${report.type}</summary>`;
-
-      Object.keys(report).forEach((key) => {
-        if (key !== "type") {
-          output += `<div>${key}: ${report[key]}</div> `;
-        }
-      });
-
-      output += `</details>`;
-    });
-    return output;
-  }
-
-  rtcStats: string = "";
-  watchRTCStats(connection: RTCPeerConnection) {
-    setInterval(() => {
-      connection
-        .getStats()
-        .then((stats) => (this.rtcStats = this.formatRTCStats(stats)));
-    }, 1000);
   }
 
   startHost() {
@@ -140,8 +116,6 @@ export class RollbackHost<TInput extends NetplayInput<TInput>> extends RollbackB
   }
 
   onClientConnected(conn: Peer.DataConnection) {
-    //this.watchRTCStats(conn.peerConnection);
-
     conn.on("error", (err: any) => console.error(err));
 
     conn.on("open", () => {
@@ -152,14 +126,18 @@ export class RollbackHost<TInput extends NetplayInput<TInput>> extends RollbackB
   onClientConnectionOpen(conn: Peer.DataConnection) {
     console.log("Client has connected... Starting game...");
     let player = this.rollbackNetcode!.addPlayer();
-    let clientData = {
+    let clientData: IClientConnData = {
       conn: conn,
       connIsOpen: true,
       playerId: player.getID(),
       initSent: false,
+      bytesSent: 0,
+      bytesReceived: 0,
     }
     this.connectedClients.push(clientData);
-    
+
+    this.watchRTCStats(clientData);
+
     conn.on("data", (data: any) => {
       if (data.type === "input") {
         let input = this.game.getStartInput();
@@ -180,5 +158,46 @@ export class RollbackHost<TInput extends NetplayInput<TInput>> extends RollbackB
     setInterval(() => {
       conn.send({ type: "ping-req", sent_time: Date.now() });
     }, PING_INTERVAL);
+  }
+
+  watchRTCStats(clientConnData: IClientConnData) {
+    setInterval(() => {
+      clientConnData.conn.peerConnection
+        .getStats()
+        .then((stats) => {
+          //this.rtcStats = this.formatRTCStats(stats)
+          stats.forEach((report) => {
+            if (report.type === "data-channel") {
+              clientConnData.bytesSent = report["bytesSent"];
+              clientConnData.bytesReceived = report["bytesReceived"];
+            }
+          });
+        });
+    }, 1000);
+  }
+
+  formatRTCStats(stats: RTCStatsReport): string {
+    let output = "";
+    stats.forEach((report) => {
+      output += `<details>`;
+      output += `<summary>${report.type}</summary>`;
+
+      Object.keys(report).forEach((key) => {
+        if (key !== "type") {
+          output += `<div>${key}: ${report[key]}</div> `;
+        }
+      });
+
+      output += `</details>`;
+    });
+    return output;
+  }
+
+  protected getStats(): string {
+    let result = "";
+    for (let clientConnData of this.connectedClients) {
+      result += `Player #${clientConnData.playerId}, bytesSent: ${(clientConnData.bytesSent / 1024).toFixed(2)} kB, bytesReceived: ${(clientConnData.bytesReceived / 1024).toFixed(2)} kB<br/>`;
+    }
+    return result;
   }
 }

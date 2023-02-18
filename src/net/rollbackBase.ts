@@ -95,6 +95,7 @@ export class RollbackBase<TInput extends NetplayInput<TInput>> {
             .toFixed(2)} ms +/- ${this.pingMeasure.stddev.toFixed(2)} ms</div>
           <div>Pred. Frames: ${this.rollbackNetcode!.predictedFrames()}</div>
           <div title="If true, then the other player is running slow, so we wait for them.">Stalling: ${this.rollbackNetcode!.shouldStall()}</div>
+          ${this.getStats()}
           `;
       }
 
@@ -103,5 +104,9 @@ export class RollbackBase<TInput extends NetplayInput<TInput>> {
     };
 
     requestAnimationFrame(animate);
+  }
+
+  protected getStats(): string {
+    return "";
   }
 }
