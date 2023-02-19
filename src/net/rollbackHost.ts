@@ -17,6 +17,7 @@ interface IClientConnData {
   connIsOpen: boolean;
   playerId: number;
   initSent: boolean;
+  fullStateRequested: boolean;
   bytesSent: number;
   bytesReceived: number;
   packetsSent: number;
@@ -95,7 +96,9 @@ export class RollbackHost<TInput extends NetplayInput<TInput>> extends RollbackB
             let msg = new LeProtMsg_RollbackState();
             msg.keyFrameState = keyFrameState;
             //console.log(`Sending state ${keyFrameState.frame} to player ${clientConnData.playerId}, size: ${JSON.stringify(msg).length} bytes`);
-            clientConnData.conn.send(this.leprot.genMessage(this.leprotMsgId_RollbackState, msg));
+            let fullState = true; // clientConnData.fullStateRequested;
+            clientConnData.conn.send(this.leprot.genMessage(this.leprotMsgId_RollbackState, msg, !fullState));
+            clientConnData.fullStateRequested = false;
             clientConnData.packetsSent += 1;
 
           } else {
@@ -130,6 +133,7 @@ export class RollbackHost<TInput extends NetplayInput<TInput>> extends RollbackB
       connIsOpen: true,
       playerId: player.getID(),
       initSent: false,
+      fullStateRequested: false,
       bytesSent: 0,
       bytesReceived: 0,
       packetsSent: 0,

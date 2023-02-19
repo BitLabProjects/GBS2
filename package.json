@@ -53,6 +53,7 @@
     "micromatch": "^4.0.5",
     "mime-db": "^1.52.0",
     "mime-types": "^2.1.35",
+    "murmur-32": "^1.0.0",
     "neo-async": "^2.6.2",
     "node-releases": "^2.0.8",
     "peerjs": "^1.4.7",

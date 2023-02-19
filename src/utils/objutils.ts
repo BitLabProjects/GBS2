@@ -1,3 +1,6 @@
+import { BufferReader } from "./bufferreader";
+import { BufferWriter } from "./bufferwriter";
+
 export enum TypeKind {
   Number,
   String,
@@ -7,15 +10,25 @@ export enum TypeKind {
 
 export class TypeDescriptor {
   props: Map<string, TypeDescriptor>;
+  propName: string[];
   constructor(
     public readonly kind: TypeKind,
     private readonly typeConstructor: any,
     public readonly arrayType?: TypeDescriptor) {
     this.props = new Map<string, TypeDescriptor>();
+    this.propName = [];
   }
 
   create(): any {
     return new this.typeConstructor();
+  }
+
+  addProp(name: string, type: TypeDescriptor) {
+    if (this.propName.length == 64) {
+      throw new Error("Can't describe more than 64 properties per type");
+    }
+    this.props.set(name, type);
+    this.propName.push(name);
   }
 }
 
@@ -86,6 +99,66 @@ export class ObjUtils {
       dstArray.push(dstUnit);
     }
     return dstArray;
+  }
+
+  public static serialize(writer: BufferWriter, value: any, type: TypeDescriptor) {
+    switch (type.kind) {
+      case TypeKind.Number:
+        writer.writeFloat32(value);
+        break;
+
+      case TypeKind.String:
+        writer.writeString(value);
+        break;
+
+      case TypeKind.Generic:
+        for (let i = 0; i < type.propName.length; i++) {
+          let propName = type.propName[i];
+          let propType = type.props.get(propName)!;
+          ObjUtils.serialize(writer, value[propName], propType);
+        }
+        break;
+
+      case TypeKind.Array:
+        writer.writeUint32(value.length);
+        for (let i = 0; i < value.length; i++) {
+          ObjUtils.serialize(writer, value[i], type.arrayType!);
+        }
+        break;
+
+      default:
+        throw new Error("Type kind not supported: " + type.kind);
+    }
+  }
+
+  public static deserialize(reader: BufferReader, type: TypeDescriptor): any {
+    switch (type.kind) {
+      case TypeKind.Number:
+        return reader.readFloat32();
+
+      case TypeKind.String:
+        return reader.readString();
+
+      case TypeKind.Generic:
+        let value = type.create();
+        for (let i = 0; i < type.propName.length; i++) {
+          let propName = type.propName[i];
+          let propType = type.props.get(propName)!;
+          value[propName] = ObjUtils.deserialize(reader, propType);
+        }
+        return value;
+
+      case TypeKind.Array:
+        let arrayLength = reader.readUint32();
+        let valueArr = [];
+        for (let i = 0; i < arrayLength; i++) {
+          valueArr[i] = ObjUtils.deserialize(reader, type.arrayType!);
+        }
+        return valueArr;
+
+      default:
+        throw new Error("Type kind not supported: " + type.kind);
+    }
   }
 
   public static copyProps(srcObj: any, dstObj: any): void {

@@ -26,8 +26,8 @@ export class LeProtMsg_RollbackInit {
 
   static createTypeDescriptor(keyFrameStateTypeDescr: TypeDescriptor): TypeDescriptor {
     let td = new TypeDescriptor(TypeKind.Generic, LeProtMsg_RollbackInit);
-    td.props.set("initialState", keyFrameStateTypeDescr);
-    td.props.set("assignedPlayerId", new TypeDescriptor(TypeKind.Number, undefined));
+    td.addProp("initialState", keyFrameStateTypeDescr);
+    td.addProp("assignedPlayerId", new TypeDescriptor(TypeKind.Number, undefined));
     return td;
   }
 }
@@ -37,7 +37,7 @@ export class LeProtMsg_RollbackState {
 
   static createTypeDescriptor(keyFrameStateTypeDescr: TypeDescriptor): TypeDescriptor {
     let td = new TypeDescriptor(TypeKind.Generic, LeProtMsg_RollbackState);
-    td.props.set("keyFrameState", keyFrameStateTypeDescr);
+    td.addProp("keyFrameState", keyFrameStateTypeDescr);
     return td;
   }
 }
@@ -50,9 +50,9 @@ export class LeProtMsg_RollbackInput {
   static createTypeDescriptor(inputTypeDescr: TypeDescriptor): TypeDescriptor {
     let td = new TypeDescriptor(TypeKind.Generic, LeProtMsg_RollbackInput);
     let numTd = new TypeDescriptor(TypeKind.Number, undefined);
-    td.props.set("frame", numTd);
-    td.props.set("playerId", numTd);
-    td.props.set("input", inputTypeDescr);
+    td.addProp("frame", numTd);
+    td.addProp("playerId", numTd);
+    td.addProp("input", inputTypeDescr);
     return td;
   }
 }
@@ -64,9 +64,9 @@ export class KeyFrameState implements IKeyFrameState {
 
   static createTypeDescriptor(stateTypeDescr: TypeDescriptor, inputTypeDescr: TypeDescriptor): TypeDescriptor {
     let td = new TypeDescriptor(TypeKind.Generic, LeProtMsg_RollbackInit);
-    td.props.set("frame", new TypeDescriptor(TypeKind.Number, undefined));
-    td.props.set("state", stateTypeDescr);
-    td.props.set("playerInputs", new TypeDescriptor(TypeKind.Array, undefined, inputTypeDescr));
+    td.addProp("frame", new TypeDescriptor(TypeKind.Number, undefined));
+    td.addProp("state", stateTypeDescr);
+    td.addProp("playerInputs", new TypeDescriptor(TypeKind.Array, undefined, inputTypeDescr));
     return td;
   }
 }

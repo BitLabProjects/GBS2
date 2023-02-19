@@ -411,13 +411,13 @@ export class DefaultInput extends NetplayInput<DefaultInput> {
   static createTypeDescriptor(): TypeDescriptor {
     let td = new TypeDescriptor(TypeKind.Generic, DefaultInput);
     let numTd = new TypeDescriptor(TypeKind.Number, undefined);
-    td.props.set("keyLeft", numTd);
-    td.props.set("keyRight", numTd);
-    td.props.set("keyUp", numTd);
-    td.props.set("keyDown", numTd);
-    td.props.set("keySpace", numTd);
-    td.props.set("joystick1", Vect.TypeDescriptor);
-    td.props.set("joystick2", Vect.TypeDescriptor);
+    td.addProp("keyLeft", numTd);
+    td.addProp("keyRight", numTd);
+    td.addProp("keyUp", numTd);
+    td.addProp("keyDown", numTd);
+    td.addProp("keySpace", numTd);
+    td.addProp("joystick1", Vect.TypeDescriptor);
+    td.addProp("joystick2", Vect.TypeDescriptor);
     return td;
   }
 }

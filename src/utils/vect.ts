@@ -88,8 +88,8 @@ export class Vect {
   static createTypeDescriptor(): TypeDescriptor {
     let td = new TypeDescriptor(TypeKind.Generic, Vect);
     let numTd = new TypeDescriptor(TypeKind.Number, undefined);
-    td.props.set("x", numTd);
-    td.props.set("y", numTd);
+    td.addProp("x", numTd);
+    td.addProp("y", numTd);
     return td;
   }
 }

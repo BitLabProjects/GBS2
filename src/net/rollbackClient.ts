@@ -69,6 +69,10 @@ export class RollbackClient<TInput extends NetplayInput<TInput>> extends Rollbac
           this.pingMeasure.update(Number(diff));
           break;
 
+        case LeProtCmd.TypeHash:
+          let origMsgId = msg.payload.origMsgId;
+          let origMsgHash = msg.payload.origMsgHash;
+
         case this.leprotMsgId_RollbackInit:
           // The init message is sent as the first message after a client connects
           // It contains the initial state, along with all the players present and relative input for that frame

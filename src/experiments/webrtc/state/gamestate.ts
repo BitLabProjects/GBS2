@@ -58,39 +58,39 @@ export class GameState {
     let numTd = new TypeDescriptor(TypeKind.Number, undefined);
 
     let td = new TypeDescriptor(TypeKind.Generic, GameState);
-    td.props.set("time", numTd);
+    td.addProp("time", numTd);
 
 
     let unitTd = new TypeDescriptor(TypeKind.Generic, UnitState);
-    unitTd.props.set("playerId", numTd);
-    unitTd.props.set("pos", Vect.TypeDescriptor);
-    unitTd.props.set("knock", Vect.TypeDescriptor);
-    unitTd.props.set("dir", Vect.TypeDescriptor);
-    unitTd.props.set("life", numTd);
-    unitTd.props.set("score", numTd);
-    unitTd.props.set("coolDown", numTd);
-    unitTd.props.set("lastHitByPlayerId", numTd);
-    td.props.set("units", new TypeDescriptor(TypeKind.Array, undefined, unitTd));
+    unitTd.addProp("playerId", numTd);
+    unitTd.addProp("pos", Vect.TypeDescriptor);
+    unitTd.addProp("knock", Vect.TypeDescriptor);
+    unitTd.addProp("dir", Vect.TypeDescriptor);
+    unitTd.addProp("life", numTd);
+    unitTd.addProp("score", numTd);
+    unitTd.addProp("coolDown", numTd);
+    unitTd.addProp("lastHitByPlayerId", numTd);
+    td.addProp("units", new TypeDescriptor(TypeKind.Array, undefined, unitTd));
     
     let projectileTd = new TypeDescriptor(TypeKind.Generic, ProjectileState);
-    projectileTd.props.set("pos", Vect.TypeDescriptor);
-    projectileTd.props.set("vel", Vect.TypeDescriptor);
-    projectileTd.props.set("life", numTd);
-    projectileTd.props.set("playerId", numTd);
-    td.props.set("projectiles", new TypeDescriptor(TypeKind.Array, undefined, projectileTd));
+    projectileTd.addProp("pos", Vect.TypeDescriptor);
+    projectileTd.addProp("vel", Vect.TypeDescriptor);
+    projectileTd.addProp("life", numTd);
+    projectileTd.addProp("playerId", numTd);
+    td.addProp("projectiles", new TypeDescriptor(TypeKind.Array, undefined, projectileTd));
     
     let deadUnitTd = new TypeDescriptor(TypeKind.Generic, DeadUnitState);
-    deadUnitTd.props.set("playerId", numTd);
-    deadUnitTd.props.set("x", numTd);
-    deadUnitTd.props.set("y", numTd);
-    deadUnitTd.props.set("fadeTime", numTd);
-    td.props.set("deadUnits",  new TypeDescriptor(TypeKind.Array, undefined, deadUnitTd));
+    deadUnitTd.addProp("playerId", numTd);
+    deadUnitTd.addProp("x", numTd);
+    deadUnitTd.addProp("y", numTd);
+    deadUnitTd.addProp("fadeTime", numTd);
+    td.addProp("deadUnits",  new TypeDescriptor(TypeKind.Array, undefined, deadUnitTd));
 
     let mobTd = new TypeDescriptor(TypeKind.Generic, MobState);
-    mobTd.props.set("type", numTd);
-    mobTd.props.set("pos", Vect.TypeDescriptor);
-    mobTd.props.set("hitTime", numTd);
-    td.props.set("mobs", new TypeDescriptor(TypeKind.Array, undefined, mobTd));
+    mobTd.addProp("type", numTd);
+    mobTd.addProp("pos", Vect.TypeDescriptor);
+    mobTd.addProp("hitTime", numTd);
+    td.addProp("mobs", new TypeDescriptor(TypeKind.Array, undefined, mobTd));
     return td;
   }
 }
