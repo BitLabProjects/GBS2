@@ -391,6 +391,11 @@ export enum KeyState {
   JustPressed = 2,
   JustReleased = 3,
 }
+export class KeyStateUtils {
+  static isPressed(ks: KeyState) {
+    return ks === KeyState.JustPressed || ks === KeyState.Pressed;
+  }
+}
 
 export class KeyEventArgs {
   constructor(public readonly keys: { [key: string]: KeyState }) { }

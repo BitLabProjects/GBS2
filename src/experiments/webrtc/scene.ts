@@ -1,15 +1,14 @@
-import { Engine, IInputHandler, KeyEventArgs, TouchEventArgs } from "../../engine/engine";
+import { Engine, IInputHandler, KeyEventArgs, KeyState, KeyStateUtils, TouchEventArgs } from "../../engine/engine";
 import { Component, Node, NodeUI, Transform2D } from "../../engine/node";
 import { Scene } from "../../engine/scene";
 import { Sprite, SpriteComp } from "../../engine/spritecomp";
 import { Texture } from "../../engine/texture";
 import { UIRootComp } from "../../engine/uirootcomp";
-import { DefaultInput, KeyState } from "../../net/defaultinput";
 import { Game } from "../../net/game";
 import { RollbackClient } from "../../net/rollbackClient";
 import { RollbackHost } from "../../net/rollbackHost";
-import { NetplayPlayer, SerializedState } from "../../net/types";
-import { ObjUtils, TypeDescriptor } from "../../utils/objutils";
+import { NetplayInput, NetplayPlayer, SerializedState } from "../../net/types";
+import { ObjUtils, TypeDescriptor, TypeKind } from "../../utils/objutils";
 import { Rect } from "../../utils/rect";
 import { Vect } from "../../utils/vect";
 import { FullScreenQuad } from "../flocking/fullscreenquad";
@@ -123,21 +122,24 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
   }
 
   getInput(): DefaultInput {
-    let input = this.getStartInput();
-    for(let key in this.keys) {
-      input.pressed[key] = this.keys[key];
-    }
-    input.touchControls = {};
-    input.touchControls["joystick1"] = { x: this.joystickCompLeft?.dx ?? 0, y: this.joystickCompLeft?.dy ?? 0};
-    input.touchControls["joystick2"] = { x: this.joystickCompRight?.dx ?? 0, y: this.joystickCompRight?.dy ?? 0};
+    let input = new DefaultInput();
+    input.keyLeft = this.keys["ArrowLeft"] || KeyState.Released;
+    input.keyRight = this.keys["ArrowRight"] || KeyState.Released;
+    input.keyUp = this.keys["ArrowUp"] || KeyState.Released;
+    input.keyDown = this.keys["ArrowDown"] || KeyState.Released;
+    input.keySpace = this.keys[" "] || KeyState.Released;
+    input.joystick1 = new Vect(this.joystickCompLeft?.dx ?? 0, this.joystickCompLeft?.dy ?? 0);
+    input.joystick2 = new Vect(this.joystickCompRight?.dx ?? 0, this.joystickCompRight?.dy ?? 0);
     return input;
   }
   getStartInput(): DefaultInput {
-    let input = new DefaultInput();
-    input.touchControls = {};
-    input.touchControls["joystick1"] = { x: 0, y: 0};
-    input.touchControls["joystick2"] = { x: 0, y: 0};
-    return input;
+    return new DefaultInput();
+  }
+  getGameStateTypeDef(): TypeDescriptor {
+    return GameState.TypeDescriptor;
+  }
+  getGameInputTypeDef(): TypeDescriptor {
+    return DefaultInput.TypeDescriptor;
   }
 
   onTouchUpdate(tea: TouchEventArgs): void {
@@ -170,12 +172,12 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
       // Generate player velocity from input keys.
       const vel = new Vect(
-          (input.isPressed("ArrowLeft") ? -1 : 0) +
-          (input.isPressed("ArrowRight") ? 1 : 0) +
-          (input.touchControls!.joystick1.x), 
-          (input.isPressed("ArrowDown") ? -1 : 0) +
-          (input.isPressed("ArrowUp") ? 1 : 0) +
-          (input.touchControls!.joystick1.y),
+          (KeyStateUtils.isPressed(input.keyLeft) ? -1 : 0) +
+          (KeyStateUtils.isPressed(input.keyRight) ? 1 : 0) +
+          (input.joystick1.x), 
+          (KeyStateUtils.isPressed(input.keyDown) ? -1 : 0) +
+          (KeyStateUtils.isPressed(input.keyUp) ? 1 : 0) +
+          (input.joystick1.y),
       );
 
 
@@ -197,10 +199,10 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
       } else {
         let dir: Vect | undefined;
 
-        if (input.isPressed(" ")) {
+        if (KeyStateUtils.isPressed(input.keySpace)) {
           dir = unitState.dir.clone();
-        } else if (input.touchControls!.joystick2.x !== 0 || input.touchControls!.joystick2.y !== 0) {
-          dir = new Vect(input.touchControls!.joystick2.x, input.touchControls!.joystick2.y);
+        } else if (input.joystick2.x !== 0 || input.joystick2.y !== 0) {
+          dir = new Vect(input.joystick2.x, input.joystick2.y);
           dir.normalize();
         }
 
@@ -393,5 +395,29 @@ class MapBackgroundComp extends FullScreenQuad {
     float rectDist = min(max(d.x, d.y), 0.0) + length(max(d, 0.0)) - rectRadius;
     color.xyz *= vec3(1.0 - clamp(rectDist, 0.0, 50.0) / 50.0 * 0.4);
     `);
+  }
+}
+
+export class DefaultInput extends NetplayInput<DefaultInput> {
+  keyLeft: KeyState = KeyState.Released;
+  keyRight: KeyState = KeyState.Released;
+  keyUp: KeyState = KeyState.Released;
+  keyDown: KeyState = KeyState.Released;
+  keySpace: KeyState = KeyState.Released;
+  joystick1: Vect = new Vect(0, 0);
+  joystick2: Vect = new Vect(0, 0);
+
+  static readonly TypeDescriptor: TypeDescriptor = DefaultInput.createTypeDescriptor();
+  static createTypeDescriptor(): TypeDescriptor {
+    let td = new TypeDescriptor(TypeKind.Generic, DefaultInput);
+    let numTd = new TypeDescriptor(TypeKind.Number, undefined);
+    td.props.set("keyLeft", numTd);
+    td.props.set("keyRight", numTd);
+    td.props.set("keyUp", numTd);
+    td.props.set("keyDown", numTd);
+    td.props.set("keySpace", numTd);
+    td.props.set("joystick1", Vect.TypeDescriptor);
+    td.props.set("joystick2", Vect.TypeDescriptor);
+    return td;
   }
 }

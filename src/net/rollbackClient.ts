@@ -7,9 +7,8 @@ import { Game } from "./game";
 import { RollbackNetcode } from "./netcode/rollback";
 
 import * as getUuidByString from 'uuid-by-string'
-import { IRBPMessage, IRBPMessage_Init, IRBPMessage_Input, RollbackBase } from "./rollbackBase";
-
-const PING_INTERVAL = 1000;
+import { IRBPMessage, IRBPMessage_Input, LeProtMsg_RollbackInit, LeProtMsg_RollbackInput, LeProtMsg_RollbackState, RollbackBase } from "./rollbackBase";
+import { LeProtCmd } from "./leprot";
 
 export class RollbackClient<TInput extends NetplayInput<TInput>> extends RollbackBase<TInput> {
   private conn: Peer.DataConnection;
@@ -39,7 +38,7 @@ export class RollbackClient<TInput extends NetplayInput<TInput>> extends Rollbac
       log.info(`Connecting to room ${roomName}.`);
 
       this.conn = this.peer!.connect(roomUUID as string, {
-        serialization: "json",
+        serialization: "binary",
         reliable: true,
         // @ts-ignore
         _payload: {
@@ -58,40 +57,42 @@ export class RollbackClient<TInput extends NetplayInput<TInput>> extends Rollbac
   startClient() {
     // Having a typed argument does not guarantee the message is properly formatted.
     // It helps only during development
-    this.conn.on("data", (data: IRBPMessage) => {
-      if (data.type === "input") {
-        let input = this.game.getStartInput();
-        input.deserialize(data.input);
-        // TODO Le the host tell also the playerId for the input
-        this.rollbackNetcode!.onRemoteInput(data.frame, data.playerId, input);
+    this.conn.on("data", (data: any) => {
+      let msg = this.leprot.parseMessage(new Uint8Array(data));
+      switch (msg.command) {
+        case LeProtCmd.Ping:
+          this.conn.send(this.leprot.genPong(msg.payload, BigInt(Date.now())));
+          break;
 
-      } else if (data.type === "state") {
-        this.rollbackNetcode!.onStateSync(data.keyFrameState);
+        case LeProtCmd.Pang:
+          let diff = BigInt(Date.now()) - msg.payload;
+          this.pingMeasure.update(Number(diff));
+          break;
 
-      } else if (data.type == "init") {
-        // The init message is sent as the first message after a client connects
-        // It contains the initial state, along with all the players present and relative input for that frame
-        // It also tells the starting frame number and the playerID assigned to the client
-        this.onClientInitFromHost(data);
-        this.conn.send({ type: "init-done" });
+        case this.leprotMsgId_RollbackInit:
+          // The init message is sent as the first message after a client connects
+          // It contains the initial state, along with all the players present and relative input for that frame
+          // It also tells the starting frame number and the playerID assigned to the client
+          this.onClientInitFromHost(msg.payload as LeProtMsg_RollbackInit);
+          break;
 
-      } else if (data.type == "ping-req") {
-        this.conn.send({ type: "ping-resp", sent_time: data.sent_time });
+        case this.leprotMsgId_RollbackState:
+          let rollbackState = msg.payload as LeProtMsg_RollbackState;
+          this.rollbackNetcode!.onStateSync(rollbackState.keyFrameState);
+          break;
 
-      } else if (data.type == "ping-resp") {
-        this.pingMeasure.update(Date.now() - data.sent_time);
+        case this.leprotMsgId_RollbackInput:
+            let rollbackInput = msg.payload as LeProtMsg_RollbackInput;
+            this.rollbackNetcode!.onRemoteInput(rollbackInput.frame, rollbackInput.playerId, rollbackInput.input);
+          break;
       }
     });
     this.conn.on("open", () => {
       console.log("Successfully connected to server... Starting game...");
-
-      setInterval(() => {
-        this.conn.send({ type: "ping-req", sent_time: Date.now() });
-      }, PING_INTERVAL);
     });
   }
 
-  onClientInitFromHost(data: IRBPMessage_Init) {
+  onClientInitFromHost(data: LeProtMsg_RollbackInit) {
     this.rollbackNetcode = new RollbackNetcode(
       false,
       this.game,
@@ -103,13 +104,12 @@ export class RollbackClient<TInput extends NetplayInput<TInput>> extends Rollbac
       () => this.game.getStartInput(),
       () => this.game.getInput(),
       (frame, playerId, input) => {
-        let msg: IRBPMessage_Input = {
-          type: "input",
-          frame: frame,
-          playerId: playerId,
-          input: input.serialize()
-        };
-        this.conn.send(msg);
+        //Send the input to every player
+        let msg = new LeProtMsg_RollbackInput();
+        msg.frame = frame;
+        msg.playerId = playerId;
+        msg.input = input.serialize();
+        this.conn.send(this.leprot.genMessage(this.leprotMsgId_RollbackInput, msg));
       }
     );
 

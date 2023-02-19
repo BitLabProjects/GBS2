@@ -1,7 +1,21 @@
+export enum TypeKind {
+  Number,
+  String,
+  Array,
+  Generic,
+}
+
 export class TypeDescriptor {
-  props: { [x: string]: TypeDescriptor };
-  constructor(public readonly type: any, public readonly isArray: boolean = false) {
-    this.props = {};
+  props: Map<string, TypeDescriptor>;
+  constructor(
+    public readonly kind: TypeKind,
+    private readonly typeConstructor: any,
+    public readonly arrayType?: TypeDescriptor) {
+    this.props = new Map<string, TypeDescriptor>();
+  }
+
+  create(): any {
+    return new this.typeConstructor();
   }
 }
 
@@ -18,28 +32,30 @@ export class ObjUtils {
   }
 
   public static cloneUsingTypeDescriptor(src: any, typeDescr: TypeDescriptor): any {
-    let dst = new typeDescr.type();
-    for(let srcKey in src) {
-      let srcVal = src[srcKey];
-      if (typeDescr.props[srcKey]) {
-        let propTypeDescr = typeDescr.props[srcKey];
-        if (propTypeDescr.isArray) {
-          let dstArr = [];
-          for(let srcItem of srcVal) {
-            dstArr.push(ObjUtils.cloneUsingTypeDescriptor(srcItem, propTypeDescr));
-          }
-          dst[srcKey] = dstArr;
-        } else { 
-          dst[srcKey] = ObjUtils.cloneUsingTypeDescriptor(srcVal, propTypeDescr);
+    switch (typeDescr.kind) {
+      case TypeKind.Number:
+      case TypeKind.String:
+        return src;
+
+      case TypeKind.Generic:
+        let dst = typeDescr.create();
+        for (let srcKey in src) {
+          let propTypeDescr = typeDescr.props.get(srcKey);
+          dst[srcKey] = ObjUtils.cloneUsingTypeDescriptor(src[srcKey], propTypeDescr!);
         }
-      } else if (typeof srcVal === "number" || typeof srcVal === "string") {
-        dst[srcKey] = srcVal;
-      } else {
-        // Slow path, should never happen
-        dst[srcKey] = ObjUtils.cloneDiscardingTypes(srcVal);
-      }
+        return dst;
+
+      case TypeKind.Array:
+        let dstArr = [];
+        for (let srcItem of src) {
+          dstArr.push(ObjUtils.cloneUsingTypeDescriptor(srcItem, typeDescr.arrayType!));
+        }
+        return dstArr;
+
+      default:
+        throw new Error("Type kind not supported: " + typeDescr.kind);
     }
-    return dst;
+    
   }
 
   public static cloneDiscardingTypes(src: any): any {
@@ -47,24 +63,24 @@ export class ObjUtils {
       return src;
     } else if (Array.isArray(src)) {
       let dstObj: any[] = [];
-      for(let srcKey in src) {
+      for (let srcKey in src) {
         dstObj[srcKey as any] = ObjUtils.cloneDiscardingTypes(src[srcKey]);
       }
       return dstObj;
     } else {
       let dstObj: any = {};
-      for(let srcKey in src) {
+      for (let srcKey in src) {
         dstObj[srcKey] = ObjUtils.cloneDiscardingTypes(src[srcKey]);
       }
       return dstObj;
     }
   }
 
-  public static cloneArrayUsingType(srcArray: any[], 
-                                    type: any,
-                                    copyFunc: any): any {
+  public static cloneArrayUsingType(srcArray: any[],
+    type: any,
+    copyFunc: any): any {
     let dstArray = [];
-    for(let srcUnit of srcArray) {
+    for (let srcUnit of srcArray) {
       let dstUnit = new type();
       copyFunc(srcUnit, dstUnit)
       dstArray.push(dstUnit);
@@ -73,7 +89,7 @@ export class ObjUtils {
   }
 
   public static copyProps(srcObj: any, dstObj: any): void {
-    for(let key in srcObj) {
+    for (let key in srcObj) {
       dstObj[key] = srcObj[key];
     }
   }

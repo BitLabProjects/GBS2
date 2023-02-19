@@ -1,8 +1,8 @@
+import { TypeDescriptor, TypeKind } from "./objutils";
 import { Rect } from "./rect";
 
 export class Vect {
   constructor(public x: number, public y: number) {
-
   }
 
   static createRandom(rect: Rect) {
@@ -82,5 +82,14 @@ export class Vect {
 
   clone(): Vect {
     return new Vect(this.x, this.y);
+  }
+
+  static readonly TypeDescriptor: TypeDescriptor = Vect.createTypeDescriptor();
+  static createTypeDescriptor(): TypeDescriptor {
+    let td = new TypeDescriptor(TypeKind.Generic, Vect);
+    let numTd = new TypeDescriptor(TypeKind.Number, undefined);
+    td.props.set("x", numTd);
+    td.props.set("y", numTd);
+    return td;
   }
 }
