@@ -27,8 +27,8 @@ export class BufferReader {
     return result;
   }
   readFloat32() {
-    let result = this.view.getFloat32(this.off);
-    this.off += 4;
+    let result = this.view.getFloat64(this.off);
+    this.off += 8;
     return result;
   }
   readString() {

@@ -24,14 +24,21 @@ interface IClientConnData {
   bytesSent: number;
   bytesReceived: number;
   packetsSent: number;
+  // Keep the last frameSync received by the client piggy-backed with its input
+  // Works like the tcp sliding window: if a client falls too behind we know it's lagging
+  frameSync: number;
+  reSyncCount: number;
+  reSyncSilence: number;
 }
 
 export class RollbackHost<TInput extends NetplayInput<TInput>> extends RollbackBase<TInput> {
   connectedClients: IClientConnData[];
+  currentKeyFrame: number;
 
   constructor(game: Game<TInput>) {
     super(game);
     this.connectedClients = [];
+    this.currentKeyFrame = 0;
   }
 
   start(roomName: string) {
@@ -74,12 +81,13 @@ export class RollbackHost<TInput extends NetplayInput<TInput>> extends RollbackB
       this.game.timestep,
       () => this.game.getStartInput(),
       () => this.game.getInput(),
-      (frame, playerId, input) => {
+      (frame, playerId, input, frameSync) => {
         //Send the input to every player
         let msg = new LeProtMsg_RollbackInput();
         msg.frame = frame;
         msg.playerId = playerId;
         msg.input = input.serialize();
+        msg.frameSync = frameSync;
         for (let clientConnData of this.connectedClients) {
           if (!clientConnData.connIsOpen || !clientConnData.initSent) {
             continue;
@@ -90,6 +98,8 @@ export class RollbackHost<TInput extends NetplayInput<TInput>> extends RollbackB
         }
       },
       (keyFrameState: IKeyFrameState) => {
+        this.currentKeyFrame = keyFrameState.frame;
+
         //Send the official state for the frame to every player
         let stateHash = ObjUtils.getObjectHash(keyFrameState.state, this.game.getGameStateTypeDef());
 
@@ -99,11 +109,17 @@ export class RollbackHost<TInput extends NetplayInput<TInput>> extends RollbackB
           }
           if (clientConnData.initSent) {
             //console.log(`Sending state ${keyFrameState.frame} to player ${clientConnData.playerId}, size: ${JSON.stringify(msg).length} bytes`);
-            if (clientConnData.fullStateRequested) {
+            // If the client is lagging too much behind (two seconds), resync
+            if (clientConnData.reSyncSilence > 0) {
+              clientConnData.reSyncSilence -= 1;
+            }
+            if (clientConnData.frameSync < keyFrameState.frame - 60 && clientConnData.reSyncSilence <= 0) {
               let msg = new LeProtMsg_RollbackState();
               msg.keyFrameState = keyFrameState;
               clientConnData.conn.send(this.leprot.genMessage(this.leprotMsgId_RollbackState, msg));
               clientConnData.fullStateRequested = false;
+              clientConnData.reSyncCount += 1;
+              clientConnData.reSyncSilence = 30; // Don't resync for 30 frames, let the client catch up and avoid flooding it with keyframes
             } else {
               let msg = new LeProtMsg_RollbackStateHash();
               msg.frame = keyFrameState.frame;
@@ -148,6 +164,9 @@ export class RollbackHost<TInput extends NetplayInput<TInput>> extends RollbackB
       bytesSent: 0,
       bytesReceived: 0,
       packetsSent: 0,
+      frameSync: 0,
+      reSyncCount: 0,
+      reSyncSilence: 0,
     }
     this.connectedClients.push(clientData);
 
@@ -165,6 +184,9 @@ export class RollbackHost<TInput extends NetplayInput<TInput>> extends RollbackB
         case this.leprotMsgId_RollbackInput:
             let rollbackInput = msg.payload as LeProtMsg_RollbackInput;
             this.rollbackNetcode!.onRemoteInput(rollbackInput.frame, rollbackInput.playerId, rollbackInput.input);
+            // Update the frameSync for this client with the one just received.
+            clientData.frameSync = rollbackInput.frameSync;
+            console.log(`frameSync: ${rollbackInput.frameSync}`);
           break;
       }
     });
@@ -211,7 +233,7 @@ export class RollbackHost<TInput extends NetplayInput<TInput>> extends RollbackB
   protected getStats(): string {
     let result = "";
     for (let clientConnData of this.connectedClients) {
-      result += `Player #${clientConnData.playerId}, bytesSent: ${(clientConnData.bytesSent / 1024).toFixed(2)} kB / ${clientConnData.packetsSent} p, bytesReceived: ${(clientConnData.bytesReceived / 1024).toFixed(2)} kB<br/>`;
+      result += `Player #${clientConnData.playerId}, s/r: ${(clientConnData.bytesSent / 1024).toFixed(2)} kB (${clientConnData.packetsSent} p) / ${(clientConnData.bytesReceived / 1024).toFixed(2)} kB, reSync: ${clientConnData.reSyncCount} (${clientConnData.frameSync - this.currentKeyFrame})<br/>`;
     }
     return result;
   }

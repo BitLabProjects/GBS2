@@ -31,8 +31,8 @@ export class BufferWriter {
     this.off += 8;
   }
   writeFloat32(value: number) {
-    this.view.setFloat32(this.off, value);
-    this.off += 4;
+    this.view.setFloat64(this.off, value);
+    this.off += 8;
   }
   writeString(value: string) {
     this.writeUint32(value.length);

@@ -7,7 +7,7 @@ import { Game } from "./game";
 import { RollbackNetcode } from "./netcode/rollback";
 
 import * as getUuidByString from 'uuid-by-string'
-import { IRBPMessage, IRBPMessage_Input, LeProtMsg_RollbackInit, LeProtMsg_RollbackInput, LeProtMsg_RollbackState, LeProtMsg_RollbackStateHash, RollbackBase } from "./rollbackBase";
+import { LeProtMsg_RollbackInit, LeProtMsg_RollbackInput, LeProtMsg_RollbackState, LeProtMsg_RollbackStateHash, RollbackBase } from "./rollbackBase";
 import { LeProtCmd } from "./leprot";
 
 export class RollbackClient<TInput extends NetplayInput<TInput>> extends RollbackBase<TInput> {
@@ -88,6 +88,7 @@ export class RollbackClient<TInput extends NetplayInput<TInput>> extends Rollbac
 
         case this.leprotMsgId_RollbackInput:
             let rollbackInput = msg.payload as LeProtMsg_RollbackInput;
+            //Note: rollbackInput.frameSync here is not used, as a client we don't care about other clients' sync status
             this.rollbackNetcode!.onRemoteInput(rollbackInput.frame, rollbackInput.playerId, rollbackInput.input);
           break;
       }
@@ -108,12 +109,13 @@ export class RollbackClient<TInput extends NetplayInput<TInput>> extends Rollbac
       this.game.timestep,
       () => this.game.getStartInput(),
       () => this.game.getInput(),
-      (frame, playerId, input) => {
+      (frame, playerId, input, frameSync) => {
         //Send the input to every player
         let msg = new LeProtMsg_RollbackInput();
         msg.frame = frame;
         msg.playerId = playerId;
         msg.input = input.serialize();
+        msg.frameSync = frameSync;
         this.conn.send(this.leprot.genMessage(this.leprotMsgId_RollbackInput, msg));
       }
     );

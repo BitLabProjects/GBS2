@@ -274,7 +274,7 @@ export class RollbackNetcode<
     this.flushHistoryKeyFrames();
   }
 
-  broadcastInput: (frame: number, playerId: number, input: TInput) => void;
+  broadcastInput: (frame: number, playerId: number, input: TInput, frameSync: number) => void;
   broadcastState?: (keyFrameState: IKeyFrameState) => void;
 
   pingMeasure: any;
@@ -297,7 +297,7 @@ export class RollbackNetcode<
     timestep: number,
     private getDefaultInput: () => TInput,
     pollInput: () => TInput,
-    broadcastInput: (frame: number, playerId: number, input: TInput) => void,
+    broadcastInput: (frame: number, playerId: number, input: TInput, frameSync: number) => void,
     broadcastState?: (keyFrameState: IKeyFrameState) => void
   ) {
     this.isHost = isHost;
@@ -382,12 +382,7 @@ export class RollbackNetcode<
 
   // Returns the number of frames for which at least one player's input is predicted.
   predictedFrames(): number {
-    for (let i = 0; i < this.history.length; ++i) {
-      if (!this.history[i].allInputsSynced()) {
-        return this.history.length - i;
-      }
-    }
-    return 0;
+    return this.history.length;
   }
 
   // Whether or not we should stall.
@@ -462,13 +457,20 @@ export class RollbackNetcode<
       // If this frame has not been just sent, then some remote input is missing:
       // Broadcast the new local input to the other players.
       DEV && console.log(`Sent input for frame ${thisFrame}`);
-      this.broadcastInput(thisFrame, this.localPlayerId, thisFrameLocalPlayerInput);
+      // The last synced frame is the one before the first in history: we just called the flush
+      let frameSync = this.history[0].frame - 1;
+      this.broadcastInput(
+        thisFrame,
+        this.localPlayerId,
+        thisFrameLocalPlayerInput,
+        frameSync);
     }
   }
 
   flushHistoryKeyFrames() {
     if (!this.isHost) {
-      // Keep removing history entry from start if the hash was confirmed and all inputs were received
+      // Keep removing history entry from start if the hash was confirmed
+      // Note that we don't care if the inputs were all received: the state is confirmed, all inputs must be right or irrelevant
       let removeCount = 0;
       while (this.history.length > 1) {
         let historyEntry = this.history[0];

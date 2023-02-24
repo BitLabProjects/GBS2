@@ -10,16 +10,6 @@ import * as getUuidByString from 'uuid-by-string'
 import { LeProt } from "./leprot";
 import { TypeDescriptor, TypeKind } from "../utils/objutils";
 
-const PING_INTERVAL = 100;
-
-export type IRBPMessage = IRBPMessage_Input;
-export interface IRBPMessage_Input {
-  type: "input";
-  frame: number;
-  playerId: number;
-  input: any;
-}
-
 export class LeProtMsg_RollbackInit {
   initialState: IKeyFrameState;
   assignedPlayerId: number;
@@ -58,12 +48,14 @@ export class LeProtMsg_RollbackInput {
   frame: number;
   playerId: number;
   input: any;
+  frameSync: number; //Piggy-back the currently synced frame
 
   static createTypeDescriptor(inputTypeDescr: TypeDescriptor): TypeDescriptor {
     let td = new TypeDescriptor(TypeKind.Generic, LeProtMsg_RollbackInput);
     td.addProp("frame", TypeDescriptor.Int32);
     td.addProp("playerId", TypeDescriptor.Int32);
     td.addProp("input", inputTypeDescr);
+    td.addProp("frameSync", TypeDescriptor.Int32);
     return td;
   }
 }
