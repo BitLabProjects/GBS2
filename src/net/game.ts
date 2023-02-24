@@ -7,6 +7,4 @@ export interface Game<TInput extends NetplayInput<TInput>> extends NetplayState<
   draw(): void;
   getInput(): TInput;
   getStartInput(): TInput;
-  getGameStateTypeDef(): TypeDescriptor;
-  getGameInputTypeDef(): TypeDescriptor;
 }

@@ -7,7 +7,7 @@ import { Game } from "./game";
 import { RollbackNetcode } from "./netcode/rollback";
 
 import * as getUuidByString from 'uuid-by-string'
-import { IRBPMessage, IRBPMessage_Input, LeProtMsg_RollbackInit, LeProtMsg_RollbackInput, LeProtMsg_RollbackState, RollbackBase } from "./rollbackBase";
+import { IRBPMessage, IRBPMessage_Input, LeProtMsg_RollbackInit, LeProtMsg_RollbackInput, LeProtMsg_RollbackState, LeProtMsg_RollbackStateHash, RollbackBase } from "./rollbackBase";
 import { LeProtCmd } from "./leprot";
 
 export class RollbackClient<TInput extends NetplayInput<TInput>> extends RollbackBase<TInput> {
@@ -69,10 +69,6 @@ export class RollbackClient<TInput extends NetplayInput<TInput>> extends Rollbac
           this.pingMeasure.update(Number(diff));
           break;
 
-        case LeProtCmd.TypeHash:
-          let origMsgId = msg.payload.origMsgId;
-          let origMsgHash = msg.payload.origMsgHash;
-
         case this.leprotMsgId_RollbackInit:
           // The init message is sent as the first message after a client connects
           // It contains the initial state, along with all the players present and relative input for that frame
@@ -83,6 +79,11 @@ export class RollbackClient<TInput extends NetplayInput<TInput>> extends Rollbac
         case this.leprotMsgId_RollbackState:
           let rollbackState = msg.payload as LeProtMsg_RollbackState;
           this.rollbackNetcode!.onStateSync(rollbackState.keyFrameState);
+          break;
+
+        case this.leprotMsgId_RollbackStateHash:
+          let rollbackStateHash = msg.payload as LeProtMsg_RollbackStateHash;
+          this.rollbackNetcode!.onStateSyncHash(rollbackStateHash.frame, rollbackStateHash.hash);
           break;
 
         case this.leprotMsgId_RollbackInput:

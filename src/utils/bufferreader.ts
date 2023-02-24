@@ -11,6 +11,11 @@ export class BufferReader {
     this.off += 1;
     return result;
   }
+  readInt32() {
+    let result = this.view.getInt32(this.off);
+    this.off += 4;
+    return result;
+  }
   readUint32() {
     let result = this.view.getUint32(this.off);
     this.off += 4;

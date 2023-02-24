@@ -87,9 +87,8 @@ export class Vect {
   static readonly TypeDescriptor: TypeDescriptor = Vect.createTypeDescriptor();
   static createTypeDescriptor(): TypeDescriptor {
     let td = new TypeDescriptor(TypeKind.Generic, Vect);
-    let numTd = new TypeDescriptor(TypeKind.Number, undefined);
-    td.addProp("x", numTd);
-    td.addProp("y", numTd);
+    td.addProp("x", TypeDescriptor.Float32);
+    td.addProp("y", TypeDescriptor.Float32);
     return td;
   }
 }

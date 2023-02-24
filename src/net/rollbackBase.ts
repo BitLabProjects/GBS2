@@ -27,7 +27,7 @@ export class LeProtMsg_RollbackInit {
   static createTypeDescriptor(keyFrameStateTypeDescr: TypeDescriptor): TypeDescriptor {
     let td = new TypeDescriptor(TypeKind.Generic, LeProtMsg_RollbackInit);
     td.addProp("initialState", keyFrameStateTypeDescr);
-    td.addProp("assignedPlayerId", new TypeDescriptor(TypeKind.Number, undefined));
+    td.addProp("assignedPlayerId", TypeDescriptor.Int32);
     return td;
   }
 }
@@ -42,6 +42,18 @@ export class LeProtMsg_RollbackState {
   }
 }
 
+export class LeProtMsg_RollbackStateHash {
+  frame: number;
+  hash: number;
+
+  static createTypeDescriptor(): TypeDescriptor {
+    let td = new TypeDescriptor(TypeKind.Generic, LeProtMsg_RollbackStateHash);
+    td.addProp("frame", TypeDescriptor.Int32);
+    td.addProp("hash", TypeDescriptor.UInt32);
+    return td;
+  }
+}
+
 export class LeProtMsg_RollbackInput {
   frame: number;
   playerId: number;
@@ -49,9 +61,8 @@ export class LeProtMsg_RollbackInput {
 
   static createTypeDescriptor(inputTypeDescr: TypeDescriptor): TypeDescriptor {
     let td = new TypeDescriptor(TypeKind.Generic, LeProtMsg_RollbackInput);
-    let numTd = new TypeDescriptor(TypeKind.Number, undefined);
-    td.addProp("frame", numTd);
-    td.addProp("playerId", numTd);
+    td.addProp("frame", TypeDescriptor.Int32);
+    td.addProp("playerId", TypeDescriptor.Int32);
     td.addProp("input", inputTypeDescr);
     return td;
   }
@@ -64,7 +75,7 @@ export class KeyFrameState implements IKeyFrameState {
 
   static createTypeDescriptor(stateTypeDescr: TypeDescriptor, inputTypeDescr: TypeDescriptor): TypeDescriptor {
     let td = new TypeDescriptor(TypeKind.Generic, LeProtMsg_RollbackInit);
-    td.addProp("frame", new TypeDescriptor(TypeKind.Number, undefined));
+    td.addProp("frame", TypeDescriptor.Int32);
     td.addProp("state", stateTypeDescr);
     td.addProp("playerInputs", new TypeDescriptor(TypeKind.Array, undefined, inputTypeDescr));
     return td;
@@ -84,6 +95,7 @@ export class RollbackBase<TInput extends NetplayInput<TInput>> {
   leprot: LeProt;
   leprotMsgId_RollbackInit: number;
   leprotMsgId_RollbackState: number;
+  leprotMsgId_RollbackStateHash: number;
   leprotMsgId_RollbackInput: number;
 
   constructor(game: Game<TInput>) {
@@ -99,6 +111,9 @@ export class RollbackBase<TInput extends NetplayInput<TInput>> {
 
     let leprotType_RollbackState = this.leprot.registerType(LeProtMsg_RollbackState.createTypeDescriptor(keyFrameStateTD));
     this.leprotMsgId_RollbackState = this.leprot.createMessageType(leprotType_RollbackState);
+
+    let leprotType_RollbackStateHash = this.leprot.registerType(LeProtMsg_RollbackStateHash.createTypeDescriptor());
+    this.leprotMsgId_RollbackStateHash = this.leprot.createMessageType(leprotType_RollbackStateHash);
 
     let leprotType_RollbackInput = this.leprot.registerType(LeProtMsg_RollbackInput.createTypeDescriptor(inputTypeDef));
     this.leprotMsgId_RollbackInput = this.leprot.createMessageType(leprotType_RollbackInput);

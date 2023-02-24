@@ -1,4 +1,4 @@
-import { ObjUtils } from "../utils/objutils";
+import { ObjUtils, TypeDescriptor } from "../utils/objutils";
 import { copyfields as copyFields } from "./utils";
 
 // Use a specific type only to tag using places, to be self-explanatory
@@ -8,6 +8,8 @@ export interface NetplayState<TInput extends NetplayInput<TInput>> {
   tick(playerInputs: Map<NetplayPlayer, TInput>): void;
   serialize(): SerializedState;
   deserialize(value: SerializedState): void;
+  getGameStateTypeDef(): TypeDescriptor;
+  getGameInputTypeDef(): TypeDescriptor;
 }
 
 export abstract class NetplayInput<TInput extends NetplayInput<TInput>> {

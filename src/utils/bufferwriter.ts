@@ -18,6 +18,10 @@ export class BufferWriter {
     this.view.setUint8(this.off, value);
     this.off += 1;
   }
+  writeInt32(value: number) {
+    this.view.setInt32(this.off, value);
+    this.off += 4;
+  }
   writeUint32(value: number) {
     this.view.setUint32(this.off, value);
     this.off += 4;

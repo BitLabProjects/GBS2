@@ -1,8 +1,11 @@
+import murmur32 from "murmur-32";
 import { BufferReader } from "./bufferreader";
 import { BufferWriter } from "./bufferwriter";
 
 export enum TypeKind {
-  Number,
+  Float32,
+  Int32,
+  UInt32,
   String,
   Array,
   Generic,
@@ -18,6 +21,11 @@ export class TypeDescriptor {
     this.props = new Map<string, TypeDescriptor>();
     this.propName = [];
   }
+
+  public static readonly Float32: TypeDescriptor = new TypeDescriptor(TypeKind.Float32, undefined);
+  public static readonly Int32: TypeDescriptor = new TypeDescriptor(TypeKind.Int32, undefined);
+  public static readonly UInt32: TypeDescriptor = new TypeDescriptor(TypeKind.UInt32, undefined);
+  public static readonly String: TypeDescriptor = new TypeDescriptor(TypeKind.String, undefined);
 
   create(): any {
     return new this.typeConstructor();
@@ -46,7 +54,9 @@ export class ObjUtils {
 
   public static cloneUsingTypeDescriptor(src: any, typeDescr: TypeDescriptor): any {
     switch (typeDescr.kind) {
-      case TypeKind.Number:
+      case TypeKind.Float32:
+      case TypeKind.Int32:
+      case TypeKind.UInt32:
       case TypeKind.String:
         return src;
 
@@ -68,7 +78,7 @@ export class ObjUtils {
       default:
         throw new Error("Type kind not supported: " + typeDescr.kind);
     }
-    
+
   }
 
   public static cloneDiscardingTypes(src: any): any {
@@ -103,8 +113,16 @@ export class ObjUtils {
 
   public static serialize(writer: BufferWriter, value: any, type: TypeDescriptor) {
     switch (type.kind) {
-      case TypeKind.Number:
+      case TypeKind.Float32:
         writer.writeFloat32(value);
+        break;
+
+      case TypeKind.Int32:
+        writer.writeInt32(value);
+        break;
+
+      case TypeKind.UInt32:
+        writer.writeUint32(value);
         break;
 
       case TypeKind.String:
@@ -133,8 +151,14 @@ export class ObjUtils {
 
   public static deserialize(reader: BufferReader, type: TypeDescriptor): any {
     switch (type.kind) {
-      case TypeKind.Number:
+      case TypeKind.Float32:
         return reader.readFloat32();
+
+      case TypeKind.Int32:
+        return reader.readInt32();
+
+      case TypeKind.UInt32:
+        return reader.readUint32();
 
       case TypeKind.String:
         return reader.readString();
@@ -159,6 +183,16 @@ export class ObjUtils {
       default:
         throw new Error("Type kind not supported: " + type.kind);
     }
+  }
+
+  static buffer = new Uint8Array(64 * 1024);
+  public static getObjectHash(value: any, typeDef: TypeDescriptor) {
+    let writer = new BufferWriter(ObjUtils.buffer);
+    ObjUtils.serialize(writer, value, typeDef);
+    let finalBuffer = ObjUtils.buffer.slice(0, writer.length);
+    let stateHashBuff = murmur32(finalBuffer.buffer);
+    let view = new DataView(stateHashBuff);
+    return view.getUint32(0);
   }
 
   public static copyProps(srcObj: any, dstObj: any): void {

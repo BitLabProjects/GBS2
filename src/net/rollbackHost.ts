@@ -7,8 +7,11 @@ import { Game } from "./game";
 import { IKeyFrameState, RollbackNetcode } from "./netcode/rollback";
 
 import * as getUuidByString from 'uuid-by-string'
-import { LeProtMsg_RollbackInit, LeProtMsg_RollbackInput, LeProtMsg_RollbackState, RollbackBase } from "./rollbackBase";
+import { LeProtMsg_RollbackInit, LeProtMsg_RollbackInput, LeProtMsg_RollbackState, LeProtMsg_RollbackStateHash, RollbackBase } from "./rollbackBase";
 import { LeProtCmd } from "./leprot";
+import murmur32 from "murmur-32";
+import { BufferWriter } from "../utils/bufferwriter";
+import { ObjUtils } from "../utils/objutils";
 
 const PING_INTERVAL = 1000;
 
@@ -88,17 +91,25 @@ export class RollbackHost<TInput extends NetplayInput<TInput>> extends RollbackB
       },
       (keyFrameState: IKeyFrameState) => {
         //Send the official state for the frame to every player
+        let stateHash = ObjUtils.getObjectHash(keyFrameState.state, this.game.getGameStateTypeDef());
+
         for (let clientConnData of this.connectedClients) {
           if (!clientConnData.connIsOpen) {
             continue;
           }
           if (clientConnData.initSent) {
-            let msg = new LeProtMsg_RollbackState();
-            msg.keyFrameState = keyFrameState;
             //console.log(`Sending state ${keyFrameState.frame} to player ${clientConnData.playerId}, size: ${JSON.stringify(msg).length} bytes`);
-            let fullState = true; // clientConnData.fullStateRequested;
-            clientConnData.conn.send(this.leprot.genMessage(this.leprotMsgId_RollbackState, msg, !fullState));
-            clientConnData.fullStateRequested = false;
+            if (clientConnData.fullStateRequested) {
+              let msg = new LeProtMsg_RollbackState();
+              msg.keyFrameState = keyFrameState;
+              clientConnData.conn.send(this.leprot.genMessage(this.leprotMsgId_RollbackState, msg));
+              clientConnData.fullStateRequested = false;
+            } else {
+              let msg = new LeProtMsg_RollbackStateHash();
+              msg.frame = keyFrameState.frame;
+              msg.hash = stateHash;
+              clientConnData.conn.send(this.leprot.genMessage(this.leprotMsgId_RollbackStateHash, msg));
+            }
             clientConnData.packetsSent += 1;
 
           } else {

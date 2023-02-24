@@ -7,33 +7,12 @@ export enum LeProtCmd {
   Ping = 0,
   Pong = 1,
   Pang = 2,
-  TypeHash = 3,
   FirstUserMessage = 10,
 }
 
 export enum LeProtSysVals {
   EndOfObject = 128,
 }
-
-// export class LeProtType {
-//   public propName: string[];
-//   public propType: LeProtType[];
-//   public arrayType: LeProtType | undefined;
-//   constructor(public typeDescr: TypeDescriptor) {
-//     this.propName = [];
-//     this.propType = [];
-//     for (let [propName, propTd] of typeDescr.props) {
-//       if (this.propName.length == 64) {
-//         throw new Error("Can't describe more than 64 properties per type");
-//       }
-//       this.propName.push(propName);
-//       this.propType.push(new LeProtType(propTd));
-//     }
-//     if (typeDescr.kind === TypeKind.Array) {
-//       this.arrayType = new LeProtType(typeDescr.arrayType!);
-//     }
-//   }
-// }
 
 export class LeProt {
   private types: TypeDescriptor[];
@@ -77,12 +56,9 @@ export class LeProt {
     return buffer;
   }
 
-  genMessage(messageTypeId: number, value: any, hashOnly?: boolean) {
+  genMessage(messageTypeId: number, value: any) {
     let writer = new BufferWriter(this.tempBuffer);
-
-    if (!hashOnly) {
-      writer.writeUint8(messageTypeId);
-    }
+    writer.writeUint8(messageTypeId);
 
     let typeId = this.messageTypes.get(messageTypeId);
     if (typeId === undefined) {
@@ -90,19 +66,7 @@ export class LeProt {
     }
     let type = this.types[typeId];
     ObjUtils.serialize(writer, value, type);
-
-    let result = this.tempBuffer.slice(0, writer.length);
-    if (hashOnly) {
-      // The buffer now contains the serialized value, hash it
-      let murmurValue = murmur32(result.buffer);
-      writer.setOffset(0);
-      writer.writeUint8(LeProtCmd.TypeHash);
-      writer.writeUint8(messageTypeId);
-      writer.writeBytes(new Uint8Array(murmurValue));
-      result = this.tempBuffer.slice(0, writer.length);
-    }
-
-    return result;
+    return this.tempBuffer.slice(0, writer.length);
   }
 
   parseMessage(buffer: Uint8Array): { command: LeProtCmd, payload: any } {
