@@ -93,7 +93,7 @@ class RollbackHistory<TInput extends NetplayInput<TInput>> {
   }
 }
 
-const DEV: boolean = true;
+const DEV: boolean = false;
 
 export class RollbackNetcode<
   TGame extends NetplayState<TInput>,
