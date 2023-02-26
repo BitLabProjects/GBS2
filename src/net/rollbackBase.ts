@@ -121,21 +121,21 @@ export class RollbackBase<TInput extends NetplayInput<TInput>> {
     this.stats.style.padding = "5px";
     document.body.appendChild(this.stats);
 
-    this.debugButton = document.createElement("button");
-    this.debugButton.style.zIndex = "1";
-    this.debugButton.style.position = "absolute";
-    this.debugButton.style.right = "5px";
-    this.debugButton.style.top = "5px";
-    this.debugButton.style.padding = "5px";
-    this.debugButton.textContent = "Debug";
-    this.debugButton.onclick = () => {
-      let content = JSON.stringify(this.rollbackNetcode?.getKeyframeHistory());
-      let blob = new Blob([content], {
-        type: "application/json",
-      })
-      ObjUtils.downloadBlob(blob, "log_keyframehistory.txt");
-    };
-    document.body.appendChild(this.debugButton);
+    // this.debugButton = document.createElement("button");
+    // this.debugButton.style.zIndex = "1";
+    // this.debugButton.style.position = "absolute";
+    // this.debugButton.style.right = "5px";
+    // this.debugButton.style.top = "5px";
+    // this.debugButton.style.padding = "5px";
+    // this.debugButton.textContent = "Debug";
+    // this.debugButton.onclick = () => {
+    //   let content = JSON.stringify(this.rollbackNetcode?.getKeyframeHistory());
+    //   let blob = new Blob([content], {
+    //     type: "application/json",
+    //   })
+    //   ObjUtils.downloadBlob(blob, "log_keyframehistory.txt");
+    // };
+    // document.body.appendChild(this.debugButton);
   }
 
   getInitialInputs(

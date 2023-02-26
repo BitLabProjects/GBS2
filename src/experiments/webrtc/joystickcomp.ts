@@ -22,8 +22,13 @@ export class JoystickComp extends Component implements IInputHandler {
         rtVect.copy(delta);
         rtVect.clampLength(40);
         let rtVectLen = rtVect.length;
-        this.dx = +rtVect.x / rtVectLen;
-        this.dy = -rtVect.y / rtVectLen;
+        if (rtVectLen > 0) {
+          this.dx = +rtVect.x / rtVectLen;
+          this.dy = -rtVect.y / rtVectLen;
+        } else {
+          this.dx = 0;
+          this.dy = 0;
+        }
       });
   }
 
