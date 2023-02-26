@@ -1,5 +1,5 @@
 import { Engine, IInputHandler, KeyEventArgs, KeyState, KeyStateUtils, TouchEventArgs } from "../../engine/engine";
-import { Component, Node, NodeUI, Transform2D } from "../../engine/node";
+import { Align, Component, Margin, Node, NodeUI, Transform2D } from "../../engine/node";
 import { Scene } from "../../engine/scene";
 import { Sprite, SpriteComp } from "../../engine/spritecomp";
 import { Texture } from "../../engine/texture";
@@ -19,6 +19,7 @@ import { MobComp } from "./scene/mobcomp";
 import { Resources } from "./scene/resources";
 import { UnitComp } from "./scene/unitcomp";
 import { DeadUnitState, EMobType, GameState, MobState, ProjectileState, UnitState } from "./state/gamestate";
+import { HeartComp } from "./ui/heartcomp";
 //import { JoystickComp } from "./JoystickComp";
 
 const worldBounds: Rect = new Rect(-400, -400, 800, 800);
@@ -62,6 +63,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
   private nodeRootUI: NodeUI;
   private joystickCompLeft: JoystickComp;
   private joystickCompRight: JoystickComp;
+  private nodeUILifeContainer: NodeUI;
 
   private mapBackgroundComp: MapBackgroundComp;
   private followCameraComp: FollowCameraComp;
@@ -75,7 +77,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     for(let i=0; i<25; i++) { 
       this.state.mobs.push(new MobState(EMobType.Dummy, Vect.createRandom(worldBounds), 100000));
     }
-    this.state.mobs.push(new MobState(EMobType.Dummy, new Vect(0, 0), 0));
+    //this.state.mobs.push(new MobState(EMobType.Dummy, new Vect(0, 0), 0));
     this.unitComps = [];
     this.projectileSpriteComps = [];
     this.deadUnitSprites = [];
@@ -94,8 +96,15 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     this.draw();
 
     // Show touch controls only on mobile and request fullscreen
+    this.nodeRootUI = NodeUI.createFromComp(this.scene, new UIRootComp());
+    this.nodeUILifeContainer = NodeUI.createFromComp(this.scene, new HeartComp(), this.nodeRootUI);
+    this.nodeUILifeContainer.transformUI.alignH = Align.Middle;
+    this.nodeUILifeContainer.transformUI.alignV = Align.Begin;
+    this.nodeUILifeContainer.transformUI.width = 18 * 10;
+    this.nodeUILifeContainer.transformUI.height = 30;
+    this.nodeUILifeContainer.transformUI.margin = Margin.uniform(5);
+
     if (this.scene.engine.isMobile) {
-      this.nodeRootUI = NodeUI.createFromComp(this.scene, new UIRootComp());
       this.scene.engine.requestFullscreen();
       
       this.joystickCompLeft = new JoystickComp(true);
@@ -357,9 +366,16 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
       this.scene.removeNode(sprite.node!);
     }
 
+    // Update camera position and background
     if (this.currentPlayerId >= 0) {
       this.followCameraComp.updateFollow(this.state.units[this.currentPlayerId].pos);
       this.mapBackgroundComp.cameraPos.copy(this.followCameraComp.pos);
+    }
+
+    // Update UI
+    if (this.currentPlayerId >= 0) {
+      let life = this.state.units[this.currentPlayerId].life;
+      (this.nodeUILifeContainer.getComponent(HeartComp) as HeartComp).onUpdateLife(life);
     }
   }
 
