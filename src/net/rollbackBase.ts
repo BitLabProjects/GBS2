@@ -8,7 +8,7 @@ import { IKeyFrameState, RollbackNetcode } from "./netcode/rollback";
 
 import * as getUuidByString from 'uuid-by-string'
 import { LeProt } from "./leprot";
-import { TypeDescriptor, TypeKind } from "../utils/objutils";
+import { ObjUtils, TypeDescriptor, TypeKind } from "../utils/objutils";
 
 export class LeProtMsg_RollbackInit {
   initialState: IKeyFrameState;
@@ -33,8 +33,9 @@ export class LeProtMsg_RollbackState {
 }
 
 export class LeProtMsg_RollbackStateHash {
-  frame: number;
-  hash: number;
+  constructor(
+    public frame: number,
+    public hash: number) { }
 
   static createTypeDescriptor(): TypeDescriptor {
     let td = new TypeDescriptor(TypeKind.Generic, LeProtMsg_RollbackStateHash);
@@ -76,6 +77,7 @@ export class KeyFrameState implements IKeyFrameState {
 
 export class RollbackBase<TInput extends NetplayInput<TInput>> {
   stats: HTMLDivElement;
+  debugButton: HTMLButtonElement;
 
   pingMeasure: StatCounter = new StatCounter(0.2);
 
@@ -117,8 +119,23 @@ export class RollbackBase<TInput extends NetplayInput<TInput>> {
     this.stats.style.backgroundColor = "rgba(0, 0, 0, 0.2)";
     this.stats.style.color = "white";
     this.stats.style.padding = "5px";
-
     document.body.appendChild(this.stats);
+
+    this.debugButton = document.createElement("button");
+    this.debugButton.style.zIndex = "1";
+    this.debugButton.style.position = "absolute";
+    this.debugButton.style.right = "5px";
+    this.debugButton.style.top = "5px";
+    this.debugButton.style.padding = "5px";
+    this.debugButton.textContent = "Debug";
+    this.debugButton.onclick = () => {
+      let content = JSON.stringify(this.rollbackNetcode?.getKeyframeHistory());
+      let blob = new Blob([content], {
+        type: "application/json",
+      })
+      ObjUtils.downloadBlob(blob, "log_keyframehistory.txt");
+    };
+    document.body.appendChild(this.debugButton);
   }
 
   getInitialInputs(

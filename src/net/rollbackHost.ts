@@ -121,9 +121,7 @@ export class RollbackHost<TInput extends NetplayInput<TInput>> extends RollbackB
               clientConnData.reSyncCount += 1;
               clientConnData.reSyncSilence = 30; // Don't resync for 30 frames, let the client catch up and avoid flooding it with keyframes
             } else {
-              let msg = new LeProtMsg_RollbackStateHash();
-              msg.frame = keyFrameState.frame;
-              msg.hash = stateHash;
+              let msg = new LeProtMsg_RollbackStateHash(keyFrameState.frame, stateHash);
               clientConnData.conn.send(this.leprot.genMessage(this.leprotMsgId_RollbackStateHash, msg));
             }
             clientConnData.packetsSent += 1;

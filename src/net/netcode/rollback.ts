@@ -37,8 +37,8 @@ class RollbackHistory<TInput extends NetplayInput<TInput>> {
    * The serialized state of the game at this frame.
    */
   state: SerializedState;
-  stateHash: number;
-  stateHashConfirmed: boolean;
+  stateHash: number | undefined;
+  stateHashFromHost: number | undefined;
 
   /**
    * These inputs represent the set of inputs that produced this state
@@ -50,19 +50,17 @@ class RollbackHistory<TInput extends NetplayInput<TInput>> {
   constructor(
     frame: number,
     state: SerializedState,
-    stateHash: number,
     inputs: Map<NetplayPlayer, { input: TInput; isPrediction: boolean }>
   ) {
     this.frame = frame;
     this.state = state;
-    this.stateHash = stateHash;
-    this.stateHashConfirmed = false;
+    this.stateHash = undefined;
+    this.stateHashFromHost = undefined;
     this.inputs = inputs;
   }
 
   static createFromKeyFrameState<TInput extends NetplayInput<TInput>>(
     keyFrameState: IKeyFrameState,
-    stateTypeDescr: TypeDescriptor,
     players: Map<number, NetplayPlayer>,
     getDefaultInput: () => TInput): RollbackHistory<TInput> {
     let historyInputs = new Map<NetplayPlayer, { input: TInput; isPrediction: boolean }>();
@@ -73,8 +71,7 @@ class RollbackHistory<TInput extends NetplayInput<TInput>> {
       let player = players.get(playerId)!;
       historyInputs.set(player, { input: input, isPrediction: false });
     }
-    let stateHash = ObjUtils.getObjectHash(keyFrameState.state, stateTypeDescr);
-    return new RollbackHistory(keyFrameState.frame, keyFrameState.state, stateHash, historyInputs);
+    return new RollbackHistory(keyFrameState.frame, keyFrameState.state, historyInputs);
   }
 
   isPlayerInputPredicted(player: NetplayPlayer) {
@@ -105,6 +102,8 @@ export class RollbackNetcode<
   history: Array<RollbackHistory<TInput>>;
   lastBroadcastedKeyFrame: number;
 
+  keyframeHistory: IKeyFrameState[];
+
   /**
    * The max number of frames that we can predict ahead before we have to stall.
    */
@@ -130,12 +129,12 @@ export class RollbackNetcode<
     for (let i = 0; i < this.history.length; ++i) {
       let currentState = this.history[i];
       if (currentState.frame === frame) {
-        if (currentState.stateHash === hash) {
-          currentState.stateHashConfirmed = true;
-          DEV && console.log(`Received frame hash for frame ${frame}, hash ${hash}, confirmed`);
-        } else {
-          DEV && console.log(`Received frame hash for frame ${frame}, hash ${hash}, WRONG`);
-        }
+        currentState.stateHashFromHost = hash;
+        // if (currentState.stateHash === hash) {
+        //   DEV && console.log(`Received frame hash for frame ${frame}, hash ${hash}, confirmed`);
+        // } else {
+        //   DEV && console.log(`Received frame hash for frame ${frame}, hash ${hash}, WRONG`);
+        // }
         break;
       }
     }
@@ -160,8 +159,8 @@ export class RollbackNetcode<
 
     // Update the first state with the definitive server state.
     //DEV && assert.equal(this.history[0].frame, frame);
-    this.history[0] = RollbackHistory.createFromKeyFrameState(keyFrameState, this.game.getGameStateTypeDef(), this.players, this.getDefaultInput);
-    this.history[0].stateHashConfirmed = true;
+    this.history[0] = RollbackHistory.createFromKeyFrameState(keyFrameState, this.players, this.getDefaultInput);
+    this.history[0].stateHashFromHost = ObjUtils.getObjectHash(keyFrameState.state, this.game.getGameStateTypeDef());
 
     // Update the expected next input for players for which this keyframe is beyond the inputs received
     for (let [id, player] of this.players) {
@@ -199,6 +198,9 @@ export class RollbackNetcode<
     DEV && assert.isNotEmpty(this.history, `'history' cannot be empty.`);*/
 
     let expectedFrame = get(this.highestFrameReceived, player) + 1;
+    if (frame < expectedFrame) {
+      return;
+    }
     DEV && ObjUtils.assertEquals(expectedFrame, frame);
     this.highestFrameReceived.set(player, expectedFrame);
 
@@ -225,7 +227,13 @@ export class RollbackNetcode<
     if (idxHistory === 0) {
       // If the input received is for the first state in history, then it must be already confirmed
       // Can happen when the predicted input was correct
-      DEV && ObjUtils.assertIsTrue(this.history[idxHistory].stateHashConfirmed);
+      //DEV && ObjUtils.assertIsTrue(this.history[idxHistory].stateHashConfirmed);
+      return;
+    }
+
+    if (idxHistory === undefined) {
+      // We received an input for a frame we don't have, should have exited before
+      DEV && console.log("onRemoteInput Error");
       return;
     }
 
@@ -343,10 +351,17 @@ export class RollbackNetcode<
     }
 
     this.history = [
-      RollbackHistory.createFromKeyFrameState(initialKeyFrameState, this.game.getGameStateTypeDef(), this.players, this.getDefaultInput),
+      RollbackHistory.createFromKeyFrameState(initialKeyFrameState, this.players, this.getDefaultInput),
     ];
     this.lastBroadcastedKeyFrame = -1;
+
+    this.keyframeHistory = [];
+
     this.checkInvariants();
+  }
+
+  getKeyframeHistory(): IKeyFrameState[] {
+    return this.keyframeHistory;
   }
 
   addPlayer(): NetplayPlayer {
@@ -437,14 +452,12 @@ export class RollbackNetcode<
     this.game.tick(this.getStateInputs(thisFrameInputs));
 
     let newState = this.game.serialize();
-    let stateHash = ObjUtils.getObjectHash(newState, this.game.getGameStateTypeDef());
 
     // Add a history entry into our rollback buffer.
     this.history.push(
       new RollbackHistory(
         thisFrame,
         newState,
-        stateHash,
         thisFrameInputs
       )
     );
@@ -474,10 +487,24 @@ export class RollbackNetcode<
       let removeCount = 0;
       while (this.history.length > 1) {
         let historyEntry = this.history[0];
-        if (historyEntry.stateHashConfirmed) {
+        let nextHistoryEntry = this.history[1];
+        if (!historyEntry.allInputsSynced() || !nextHistoryEntry.allInputsSynced()) {
+          // We can flush only an history entry if its input are all synced
+          // AND the next one is synced as well, since the first history entry must always be synced
+          break;
+        }
+        this.maybeAddHistoryEntryToKeyframeHistory(0);
+
+        if (historyEntry.stateHashFromHost === undefined) {
+          break;
+        }
+
+        historyEntry.stateHash = ObjUtils.getObjectHash(historyEntry.state, this.game.getGameStateTypeDef());
+        if (historyEntry.stateHash === historyEntry.stateHashFromHost) {
           this.history.splice(0, 1);
           removeCount += 1;
         } else {
+          // Stall
           break;
         }
       }
@@ -491,8 +518,11 @@ export class RollbackNetcode<
       // synced state.
       // To do so, start from the end going backwards, stop at the first keyframe found, broadcast it and remove its predecessors
       for (let i = this.history.length - 1; i >= 0; i--) {
+        
         let historyEntry = this.history[i];
         if (historyEntry.allInputsSynced()) {
+          this.maybeAddHistoryEntryToKeyframeHistory(i);
+
           if (historyEntry.frame <= this.lastBroadcastedKeyFrame) {
             // The elected key frame to be sent, was already sent.
             break;
@@ -509,6 +539,32 @@ export class RollbackNetcode<
     }
 
     this.checkInvariants();
+  }
+
+  maybeAddHistoryEntryToKeyframeHistory(i: number) {
+    if (!DEV) {
+      return;
+    }
+    if (!this.history[i].allInputsSynced()) {
+      return;
+    }
+
+    let lastKeyframeHistoryFrame: number;
+    if (this.keyframeHistory.length > 0) {
+      lastKeyframeHistoryFrame = this.keyframeHistory[this.keyframeHistory.length-1].frame;
+    } else {
+      lastKeyframeHistoryFrame = -1;
+    }
+
+    if (lastKeyframeHistoryFrame >= 0) {
+      // It's either the same frame, or the one before.
+      if (lastKeyframeHistoryFrame === this.history[i].frame) {
+        return; // Already added
+      }
+      DEV && ObjUtils.assertEquals(this.history[i].frame - 1, lastKeyframeHistoryFrame);
+    }
+
+    this.keyframeHistory.push(this.getKeyFrameState(this.history[i]));
   }
 
   getKeyFrameState(historyEntry: RollbackHistory<TInput>): IKeyFrameState {

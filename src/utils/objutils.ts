@@ -211,4 +211,14 @@ export class ObjUtils {
       debugger;
     }
   }
+
+  public static downloadBlob(res: Blob, name: string) {
+    const aElement = document.createElement('a');
+    aElement.setAttribute('download', name);
+    const href = URL.createObjectURL(res);
+    aElement.href = href;
+    aElement.setAttribute('target', '_blank');
+    aElement.click();
+    URL.revokeObjectURL(href);
+  }
 }
