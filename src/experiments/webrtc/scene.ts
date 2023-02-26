@@ -96,7 +96,9 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     this.draw();
 
     // Show touch controls only on mobile and request fullscreen
-    this.nodeRootUI = NodeUI.createFromComp(this.scene, new UIRootComp());
+    let uiRootComp = new UIRootComp();
+    uiRootComp.uiTexture = Texture.createFromUrl(this.scene.engine, "webrtc/ui.png", false);
+    this.nodeRootUI = NodeUI.createFromComp(this.scene, uiRootComp);
     this.nodeUILifeContainer = NodeUI.createFromComp(this.scene, new HeartComp(), this.nodeRootUI);
     this.nodeUILifeContainer.transformUI.alignH = Align.Middle;
     this.nodeUILifeContainer.transformUI.alignV = Align.Begin;
@@ -374,8 +376,8 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
     // Update UI
     if (this.currentPlayerId >= 0) {
-      let life = this.state.units[this.currentPlayerId].life;
-      (this.nodeUILifeContainer.getComponent(HeartComp) as HeartComp).onUpdateLife(life);
+      let unit = this.state.units[this.currentPlayerId];
+      (this.nodeUILifeContainer.getComponent(HeartComp) as HeartComp).onUpdateLife(unit.life, unit.score);
     }
   }
 
