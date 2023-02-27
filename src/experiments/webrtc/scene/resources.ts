@@ -13,6 +13,7 @@ export class Resources {
     this.unitSprites = [];
     this.unitSprites.push(new Sprite(Texture.createFromUrl(engine, `flocking/unit1.png`), new Rect(0, 0, 11, 12), new Vect(4, 0)));
     this.unitSprites.push(new Sprite(Texture.createFromUrl(engine, `flocking/unit2.png`), new Rect(0, 0, 13, 14), new Vect(6, 0)));
+    this.unitSprites.push(new Sprite(Texture.createFromUrl(engine, `webrtc/man.png`), new Rect(0, 0, 6, 14), new Vect(3, 0)));
 
     this.mobSprites = [];
     this.mobSprites[EMobType.Dummy] = Resources.loadSprites(engine, `webrtc/dummy.png`, 27, 12, 3, 1, new Vect(5, 0));

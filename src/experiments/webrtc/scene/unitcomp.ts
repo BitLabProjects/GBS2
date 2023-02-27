@@ -12,7 +12,8 @@ export class UnitComp extends Component {
 
   update(unit: UnitState, resources: Resources) {
     if (!this.spriteComp) {
-      this.spriteComp = new SpriteComp(resources.unitSprites[unit.playerId]);
+      //this.spriteComp = new SpriteComp(resources.unitSprites[unit.playerId]);
+      this.spriteComp = new SpriteComp(resources.unitSprites[2]);
       this.node!.addComponent(this.spriteComp);
     }
 

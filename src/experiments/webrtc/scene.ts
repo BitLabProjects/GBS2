@@ -347,7 +347,8 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     for (let [i, unit] of this.state.deadUnits.entries()) {
       let spriteComp: SpriteComp;
       if (this.deadUnitSprites.length <= i) {
-        spriteComp = new SpriteComp(this.resources.unitSprites[unit.playerId]);
+        //spriteComp = new SpriteComp(this.resources.unitSprites[unit.playerId]);
+        spriteComp = new SpriteComp(this.resources.unitSprites[2]);
         this.deadUnitSprites.push(spriteComp);
         Node.createFromComp(this.scene, spriteComp);
       } else {
