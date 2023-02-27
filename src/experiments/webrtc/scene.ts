@@ -12,7 +12,7 @@ import { ObjUtils, TypeDescriptor, TypeKind } from "../../utils/objutils";
 import { Rect } from "../../utils/rect";
 import { Vect } from "../../utils/vect";
 import { FullScreenQuad } from "../flocking/fullscreenquad";
-import { JoystickComp } from "./joystickcomp";
+import { EJoystickType, JoystickComp } from "./joystickcomp";
 import { FollowCameraComp } from "./scene/followcameracomp";
 import { IStateComponent } from "./scene/istatecomp";
 import { MobComp } from "./scene/mobcomp";
@@ -43,7 +43,7 @@ export class WebRTCScene extends Scene {
     new RollbackClient(gameComponent).start(roomName);
   }
 }
- 
+
 class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler {
   timestep: number = 1000 / 30;
   deterministic: boolean = true;
@@ -56,13 +56,15 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
   private resources: Resources;
   private projectileSprite: Sprite;
 
-  keys: { [key: string]: KeyState } = {};
+  actualKeys: { [key: string]: KeyState } = {};
+  currKeys: { [key: string]: KeyState } = {};
 
   private state: GameState;
 
   private nodeRootUI: NodeUI;
   private joystickCompLeft: JoystickComp;
   private joystickCompRight: JoystickComp;
+  private joystickCompGrab: JoystickComp;
   private nodeUILifeContainer: NodeUI;
 
   private mapBackgroundComp: MapBackgroundComp;
@@ -74,8 +76,9 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
   onCreate() {
     this.state = new GameState();
 
-    for(let i=0; i<25; i++) { 
-      this.state.mobs.push(new MobState(EMobType.Dummy, Vect.createRandom(worldBounds), 100000));
+    for (let i = 0; i < 25; i++) {
+      this.state.mobs.push(new MobState(this.state.nextMobId, EMobType.Dummy, Vect.createRandom(worldBounds), 100000));
+      this.state.nextMobId += 1;
     }
     //this.state.mobs.push(new MobState(EMobType.Dummy, new Vect(0, 0), 0));
     this.unitComps = [];
@@ -108,12 +111,15 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
     if (this.scene.engine.isMobile) {
       this.scene.engine.requestFullscreen();
-      
-      this.joystickCompLeft = new JoystickComp(true);
+
+      this.joystickCompLeft = new JoystickComp(EJoystickType.Movement);
       NodeUI.createFromComp(this.scene, this.joystickCompLeft, this.nodeRootUI);
 
-      this.joystickCompRight = new JoystickComp(false);
+      this.joystickCompRight = new JoystickComp(EJoystickType.Shoot);
       NodeUI.createFromComp(this.scene, this.joystickCompRight, this.nodeRootUI);
+
+      this.joystickCompGrab = new JoystickComp(EJoystickType.Grab);
+      NodeUI.createFromComp(this.scene, this.joystickCompGrab, this.nodeRootUI);
     }
   }
 
@@ -134,13 +140,48 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
   getInput(): DefaultInput {
     let input = new DefaultInput();
-    input.keyLeft = this.keys["ArrowLeft"] || KeyState.Released;
-    input.keyRight = this.keys["ArrowRight"] || KeyState.Released;
-    input.keyUp = this.keys["ArrowUp"] || KeyState.Released;
-    input.keyDown = this.keys["ArrowDown"] || KeyState.Released;
-    input.keySpace = this.keys[" "] || KeyState.Released;
+
+    if (this.joystickCompGrab?.isTouching) {
+      this.actualKeys['c'] = KeyState.Pressed;
+    }
+
+    // Add or update pressed keys
+    for(let key in this.actualKeys) {
+      let currVal = this.currKeys[key];
+      let actualVal = this.actualKeys[key];
+      if (actualVal === KeyState.JustPressed || actualVal === KeyState.Pressed) {
+        if (currVal === undefined) {
+          currVal = KeyState.JustPressed;
+        } else {
+          currVal = KeyState.Pressed;
+        }
+      }
+      this.currKeys[key] = currVal;
+    }
+    // Remove keys no longer pressed
+    for(let key in this.currKeys) {
+      if (this.actualKeys[key] === undefined || this.actualKeys[key] === KeyState.Released) {
+        delete this.currKeys[key];
+      }
+    }
+
+    let line = "";
+    for(let key in this.currKeys) {
+      line += `, ${key} = ${this.currKeys[key]}`;
+    }
+    if (line !== "") {
+      console.log(line);
+    }
+
+    input.keyLeft = this.currKeys["ArrowLeft"] || KeyState.Released;
+    input.keyRight = this.currKeys["ArrowRight"] || KeyState.Released;
+    input.keyUp = this.currKeys["ArrowUp"] || KeyState.Released;
+    input.keyDown = this.currKeys["ArrowDown"] || KeyState.Released;
+    input.keySpace = this.currKeys[" "] || KeyState.Released;
+    input.keyC = this.currKeys["c"] || KeyState.Released;
     input.joystick1 = new Vect(this.joystickCompLeft?.dx ?? 0, this.joystickCompLeft?.dy ?? 0);
     input.joystick2 = new Vect(this.joystickCompRight?.dx ?? 0, this.joystickCompRight?.dy ?? 0);
+    input.joystick3 = new Vect(this.joystickCompGrab?.dx ?? 0, this.joystickCompGrab?.dy ?? 0);
     return input;
   }
   getStartInput(): DefaultInput {
@@ -155,9 +196,9 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
   onTouchUpdate(tea: TouchEventArgs): void {
   }
-  
+
   onKeyUpdate(kea: KeyEventArgs): void {
-    this.keys = ObjUtils.cloneDiscardingTypes(kea.keys);
+    this.actualKeys = ObjUtils.cloneDiscardingTypes(kea.keys);
   }
 
   // The tick function takes a map of Player -> Input and
@@ -173,7 +214,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
       let unitState = this.state.units[playerId];
       if (!unitState) {
         let x = playerId === 0 ? -150 : +150;
-        unitState = new UnitState(playerId, new Vect(x, 0), new Vect(0, 0), new Vect(1, 0), this.maxLife, 0, 0, -1);
+        unitState = new UnitState(playerId, new Vect(x, 0), new Vect(0, 0), new Vect(1, 0), this.maxLife, 0, 0, -1, 0);
         this.state.units[playerId] = unitState;
       }
 
@@ -183,12 +224,12 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
       // Generate player velocity from input keys.
       const vel = new Vect(
-          (KeyStateUtils.isPressed(input.keyLeft) ? -1 : 0) +
-          (KeyStateUtils.isPressed(input.keyRight) ? 1 : 0) +
-          (input.joystick1.x), 
-          (KeyStateUtils.isPressed(input.keyDown) ? -1 : 0) +
-          (KeyStateUtils.isPressed(input.keyUp) ? 1 : 0) +
-          (input.joystick1.y),
+        (KeyStateUtils.isPressed(input.keyLeft) ? -1 : 0) +
+        (KeyStateUtils.isPressed(input.keyRight) ? 1 : 0) +
+        (input.joystick1.x),
+        (KeyStateUtils.isPressed(input.keyDown) ? -1 : 0) +
+        (KeyStateUtils.isPressed(input.keyUp) ? 1 : 0) +
+        (input.joystick1.y),
       );
 
 
@@ -206,7 +247,23 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
       unitState.knock.scale(0.85);
 
       if (unitState.coolDown > 0) {
-        unitState.coolDown -= deltaTime;
+        unitState.coolDown = Math.max(0, unitState.coolDown - deltaTime);
+      } else if (unitState.carryMobId > 0) {
+        // Update the mob position or drop it
+        if (input.keyC === KeyState.JustPressed) {
+          unitState.carryMobId = 0;
+        } else {
+          let mobId = this.state.mobs.findIndex((x) => x.mobId === unitState.carryMobId);
+          this.state.mobs[mobId].pos.copy(unitState.pos)
+          this.state.mobs[mobId].pos.y += 8;
+        }
+
+      } else if (input.keyC === KeyState.JustPressed) {
+        let mobIdx = this.state.findMobNearPos(unitState.pos, 16);
+        if (mobIdx >= 0) {
+          unitState.carryMobId = this.state.mobs[mobIdx].mobId;
+        }
+
       } else {
         let dir: Vect | undefined;
 
@@ -248,7 +305,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
           // Hit and knockback
           unit.life -= 1;
-          unit.lastHitByPlayerId = projectile.playerId;          
+          unit.lastHitByPlayerId = projectile.playerId;
           unit.knock.copy(projectile.vel);
           unit.knock.scale(0.8);
         }
@@ -382,7 +439,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     }
   }
 
-  drawSyncComps<TState, TComp extends Component & IStateComponent<TState>>(states: TState[], comps: TComp[], type: { new () : TComp; }) {
+  drawSyncComps<TState, TComp extends Component & IStateComponent<TState>>(states: TState[], comps: TComp[], type: { new(): TComp; }) {
     for (let [i, state] of states.entries()) {
       let comp = comps[i];
       if (!comp) {
@@ -423,8 +480,10 @@ export class DefaultInput extends NetplayInput<DefaultInput> {
   keyUp: KeyState = KeyState.Released;
   keyDown: KeyState = KeyState.Released;
   keySpace: KeyState = KeyState.Released;
+  keyC: KeyState = KeyState.Released;
   joystick1: Vect = new Vect(0, 0);
   joystick2: Vect = new Vect(0, 0);
+  joystick3: Vect = new Vect(0, 0);
 
   static readonly TypeDescriptor: TypeDescriptor = DefaultInput.createTypeDescriptor();
   static createTypeDescriptor(): TypeDescriptor {
@@ -434,8 +493,10 @@ export class DefaultInput extends NetplayInput<DefaultInput> {
     td.addProp("keyUp", TypeDescriptor.Int32);
     td.addProp("keyDown", TypeDescriptor.Int32);
     td.addProp("keySpace", TypeDescriptor.Int32);
+    td.addProp("keyC", TypeDescriptor.Int32);
     td.addProp("joystick1", Vect.TypeDescriptor);
     td.addProp("joystick2", Vect.TypeDescriptor);
+    td.addProp("joystick3", Vect.TypeDescriptor);
     return td;
   }
 }

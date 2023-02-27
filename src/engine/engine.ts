@@ -27,6 +27,9 @@ export class Engine {
   private lastNodeID: number;
   private lastTrackerID: number;
 
+  private pressedKeys: { [key: string]: KeyState } = {};
+  private changedKeysOnLastFrame: { [key: string]: KeyState } = {};
+
   private time: number;
 
   constructor(public readonly canvas: HTMLCanvasElement) {
@@ -111,36 +114,15 @@ export class Engine {
       updateTouchesFromTouchEvent(ev, TouchState.Release);
     }
 
-    let pressedKeys: { [key: string]: KeyState } = {};
-    let changedKeysOnLastFrame: { [key: string]: KeyState } = {};
-    let updateKeysFromKeyboardEvent = (ev: KeyboardEvent, state: KeyState) => {
-      pressedKeys[ev.key] = state;
-      changedKeysOnLastFrame[ev.key] = state;
-      raiseKeyInputSystemEventAndClean();
-    }
-    let raiseKeyInputSystemEventAndClean = () => {
-      if (engine.inputSystem) {
-        let k: { [key: string]: KeyState } = {};
-        for (let key in pressedKeys) {
-          k[key] = pressedKeys[key];
-        }
-        engine.inputSystem.onKeyUpdate(new KeyEventArgs(k));
-      }
-      for (let key in pressedKeys) {
-        if (pressedKeys[key] === KeyState.JustPressed) {
-          pressedKeys[key] = KeyState.Pressed;
-        } else if (pressedKeys[key] === KeyState.JustReleased) {
-          delete pressedKeys[key];
-        }
-      }
-    }
     document.onkeydown = (ev: KeyboardEvent) => {
       ev.preventDefault();
-      updateKeysFromKeyboardEvent(ev, KeyState.JustPressed);
+      if (!ev.repeat) {
+        engine.updateKeysFromKeyboardEvent(ev, KeyState.JustPressed);
+      }
     };
     document.onkeyup = (ev: KeyboardEvent) => {
       ev.preventDefault();
-      updateKeysFromKeyboardEvent(ev, KeyState.JustReleased);
+      engine.updateKeysFromKeyboardEvent(ev, KeyState.Released);
     };
 
     return engine;
@@ -188,6 +170,28 @@ export class Engine {
 
   public requestFullscreen() {
     document.body.requestFullscreen();
+  }
+
+  private updateKeysFromKeyboardEvent(ev: KeyboardEvent, state: KeyState) {
+    this.pressedKeys[ev.key] = state;
+    this.changedKeysOnLastFrame[ev.key] = state;
+    this.sendInputEvents();
+    for (let key in this.pressedKeys) {
+      if (this.pressedKeys[key] === KeyState.JustPressed) {
+        this.pressedKeys[key] = KeyState.Pressed;
+      } else if (this.pressedKeys[key] === KeyState.Released) {
+        delete this.pressedKeys[key];
+      }
+    }
+  }
+  private sendInputEvents() {
+    if (this.inputSystem) {
+      let k: { [key: string]: KeyState } = {};
+      for (let key in this.pressedKeys) {
+        k[key] = this.pressedKeys[key];
+      }
+      this.inputSystem.onKeyUpdate(new KeyEventArgs(k));
+    }
   }
 
   public onResize() {
@@ -259,6 +263,8 @@ export class Engine {
   }
 
   private onUpdate(deltaTime: number) {
+    this.sendInputEvents();
+
     //this.gl.clear(this.gl.COLOR_BUFFER_BIT);
     this.scene.onUpdate(deltaTime);
 
@@ -387,9 +393,8 @@ export class TouchEventArgs {
 
 export enum KeyState {
   Released = 0,
-  Pressed = 1,
-  JustPressed = 2,
-  JustReleased = 3,
+  JustPressed = 1,
+  Pressed = 2,
 }
 export class KeyStateUtils {
   static isPressed(ks: KeyState) {

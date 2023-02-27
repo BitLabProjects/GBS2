@@ -10,7 +10,8 @@ export class UnitState {
     public life: number,
     public score: number,
     public coolDown: number,
-    public lastHitByPlayerId: number) { }
+    public lastHitByPlayerId: number,
+    public carryMobId: number) { }
 }
 export class ProjectileState {
   constructor(
@@ -32,6 +33,7 @@ export enum EMobType {
 }
 export class MobState {
   constructor(
+    public mobId: number,
     public type: EMobType, 
     public pos: Vect, 
     public hitTime: number) {
@@ -44,6 +46,7 @@ export class GameState {
   projectiles: ProjectileState[];
   deadUnits: DeadUnitState[];
   mobs: MobState[];
+  nextMobId: number;
 
   constructor() {
     this.time = 0;
@@ -51,6 +54,20 @@ export class GameState {
     this.projectiles = [];
     this.deadUnits = [];
     this.mobs = [];
+    this.nextMobId = 1;
+  }
+
+  findMobNearPos(pos: Vect, range: number): number {
+    let idxNearest = -1;
+    let nearestDist = range;
+    for (let [i, mob] of this.mobs.entries()) {
+      let currDist = mob.pos.distanceTo(pos);
+      if (currDist < nearestDist) {
+        idxNearest = i;
+        nearestDist = currDist;
+      }
+    }
+    return idxNearest;
   }
 
   static readonly TypeDescriptor: TypeDescriptor = GameState.createTypeDescriptor();
@@ -58,7 +75,6 @@ export class GameState {
 
     let td = new TypeDescriptor(TypeKind.Generic, GameState);
     td.addProp("time", TypeDescriptor.Float32);
-
 
     let unitTd = new TypeDescriptor(TypeKind.Generic, UnitState);
     unitTd.addProp("playerId", TypeDescriptor.Int32);
@@ -69,6 +85,7 @@ export class GameState {
     unitTd.addProp("score", TypeDescriptor.Int32);
     unitTd.addProp("coolDown", TypeDescriptor.Int32);
     unitTd.addProp("lastHitByPlayerId", TypeDescriptor.Int32);
+    unitTd.addProp("carryMobId", TypeDescriptor.Int32);
     td.addProp("units", new TypeDescriptor(TypeKind.Array, undefined, unitTd));
     
     let projectileTd = new TypeDescriptor(TypeKind.Generic, ProjectileState);
@@ -86,10 +103,14 @@ export class GameState {
     td.addProp("deadUnits",  new TypeDescriptor(TypeKind.Array, undefined, deadUnitTd));
 
     let mobTd = new TypeDescriptor(TypeKind.Generic, MobState);
+    mobTd.addProp("mobId", TypeDescriptor.Int32);
     mobTd.addProp("type", TypeDescriptor.Int32);
     mobTd.addProp("pos", Vect.TypeDescriptor);
     mobTd.addProp("hitTime", TypeDescriptor.Float32);
     td.addProp("mobs", new TypeDescriptor(TypeKind.Array, undefined, mobTd));
+
+    td.addProp("nextMobId", TypeDescriptor.Int32);
+
     return td;
   }
 }
