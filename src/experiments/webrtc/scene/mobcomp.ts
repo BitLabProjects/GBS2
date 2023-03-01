@@ -19,7 +19,7 @@ export class MobComp extends Component {
     switch (mob.type) {
       case EMobType.Dummy: {
         //hitTime goes from zero to infinity, the divider must go from 1 to infinity
-        let divider = 1 + mob.hitTime * 0.002;
+        let divider = 1 + mob.hitTime * 2;
         // Add 90 degrees to the sin to have an immediate feedback
         let idxFrame = 1 + Math.round(Math.sin(mob.hitTime * 0.1 + Math.PI * 0.5) / divider);
         this.spriteComp.sprite = resources.mobSprites[mob.type][idxFrame];
@@ -29,6 +29,10 @@ export class MobComp extends Component {
         this.spriteComp.sprite = resources.mobSprites[mob.type][0];
       } break;
     }
+
+    let redQ = Math.min(1, mob.hitTime / 0.3);
+    this.spriteComp.color.g = redQ;
+    this.spriteComp.color.b = redQ;
 
     let t = this.node!.transform as Transform2D;
     t.x = mob.pos.x;

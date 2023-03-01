@@ -48,10 +48,10 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
   timestep: number = 1000 / 30;
   deterministic: boolean = true;
 
-  private unitComps: UnitComp[];
+  private unitComps: Map<number, UnitComp>;
   private projectileSpriteComps: SpriteComp[];
   private deadUnitSprites: SpriteComp[];
-  private mobComps: MobComp[];
+  private mobComps: Map<number, MobComp>;
 
   private resources: Resources;
   private projectileSprite: Sprite;
@@ -83,14 +83,15 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
                                         100000, 
                                         -1, 
                                         EMobState.Idle,
-                                        0));
+                                        0,
+                                        10));
       this.state.nextMobId += 1;
     }
     //this.state.mobs.push(new MobState(EMobType.Dummy, new Vect(0, 0), 0));
-    this.unitComps = [];
+    this.unitComps = new Map<number, UnitComp>();
     this.projectileSpriteComps = [];
     this.deadUnitSprites = [];
-    this.mobComps = [];
+    this.mobComps = new Map<number, MobComp>();
 
     this.resources = new Resources(this.scene.engine);
 
@@ -277,7 +278,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
         // Fire
         if (dir) {
           let pos = unitState.pos.clone();
-          let sprite = this.unitComps[player.getID()].sprite;
+          let sprite = this.unitComps.get(player.getID())!.sprite;
           if (sprite) {
             pos.addScaled(sprite.spriteRect.center, 1);
           }
@@ -291,6 +292,8 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
       }
     }
 
+    let mobHitByIdxUnit: number[] = [];
+
     for (let [i, projectile] of this.state.projectiles.entries()) {
       let projectileDelta = projectile.vel.clone();
       projectileDelta.scale(deltaTime);
@@ -300,7 +303,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
         if (projectile.playerId === j) {
           continue;
         }
-        if (this.spriteCollides(projectile.pos, projectileDelta, unit.pos, this.unitComps[unit.playerId].sprite)) {
+        if (this.spriteCollides(projectile.pos, projectileDelta, unit.pos, this.unitComps.get(unit.playerId)!.sprite)) {
           projectile.life = 0;
 
           // Hit and knockback
@@ -313,11 +316,12 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
       // Hit mobs
       for (let [j, mob] of this.state.mobs.entries()) {
-        if (this.spriteCollides(projectile.pos, projectileDelta, mob.pos, this.mobComps[j].sprite)) {
+        if (this.spriteCollides(projectile.pos, projectileDelta, mob.pos, this.mobComps.get(mob.mobId)!.sprite)) {
           projectile.life = 0;
 
           mob.hitTime = 0;
-          // TODO Kill mob
+          mob.life -= 1;
+          mobHitByIdxUnit[j] = projectile.playerId;
         }
       }
 
@@ -329,11 +333,35 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
       }
     }
 
+    // Remove dead mobs
+    {
+      let i = 0;
+      while (i < this.state.mobs.length) {
+        if (this.state.mobs[i].life <= 0) {
+          // Remove the mob by replacing it with the last in the list
+          let lastMob = this.state.mobs.pop();
+          if (i < this.state.mobs.length - 1) {
+            this.state.mobs[i] = lastMob!;
+          }
+
+          // Assign score
+          let hitByPlayerIdx = this.state.getPlayerById(mobHitByIdxUnit[i]);
+          if (hitByPlayerIdx >= 0) {
+            this.state.units[hitByPlayerIdx].score += 1;
+          }
+        } else {
+          i++;
+        }
+      }
+    }
+
     for (let [i, mob] of this.state.mobs.entries()) {
+      mob.hitTime += deltaTime;
+      if (mob.life <= 0) continue;
+
       // Mob logic by type
       switch (mob.type) {
         case EMobType.Dummy:
-          mob.hitTime += this.timestep;
           break;
 
         case EMobType.Zombie:
@@ -499,12 +527,19 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     }
   }
 
-  drawSyncComps<TState, TComp extends Component & IStateComponent<TState>>(states: TState[], comps: TComp[], type: { new(): TComp; }) {
-    for (let [i, state] of states.entries()) {
-      let comp = comps[i];
+  drawSyncComps<TState extends {getId(): number}, 
+                TComp extends Component & IStateComponent<TState>>(
+    states: TState[], 
+    comps: Map<number, TComp>, 
+    type: { new(stateId: number): TComp; }) {
+
+    for (let state of states) {
+      let stateId = state.getId();
+      let comp = comps.get(stateId);
+
       if (!comp) {
-        comp = new type();
-        comps[i] = comp;
+        comp = new type(stateId);
+        comps.set(stateId, comp);
         Node.createFromComp(this.scene, comp);
       }
 
@@ -512,9 +547,19 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     }
 
     // Remove leftover unit sprites
-    let leftoverComps = comps.splice(states.length);
-    for (let comp of leftoverComps) {
-      this.scene.removeNode(comp.node!);
+    if (states.length !== comps.size) {
+      // Build a key map
+      let keys = new Set<number>();
+      for (let state of states) {
+        keys.add(state.getId());
+      }
+
+      for(let key of comps.keys()) {
+        if (!keys.has(key)) {
+          this.scene.removeNode(comps.get(key)!.node!);
+          comps.delete(key);
+        }
+      }
     }
   }
 }

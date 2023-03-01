@@ -12,6 +12,8 @@ export class UnitState {
     public coolDown: number,
     public lastHitByPlayerId: number,
     public carryMobId: number) { }
+
+  getId() { return this.playerId; }
 }
 export class ProjectileState {
   constructor(
@@ -46,8 +48,11 @@ export class MobState {
     public hitTime: number,
     public attackPlayerId: number,
     public state: EMobState,
-    public stateTime: number,) {
+    public stateTime: number,
+    public life: number,) {
   }
+
+  getId() { return this.mobId; }
 }
 
 export class GameState {
@@ -153,6 +158,7 @@ export class GameState {
     mobTd.addProp("attackPlayerId", TypeDescriptor.Int32);
     mobTd.addProp("state", TypeDescriptor.Int32);
     mobTd.addProp("stateTime", TypeDescriptor.Float32);
+    mobTd.addProp("life", TypeDescriptor.Int32);
     td.addProp("mobs", new TypeDescriptor(TypeKind.Array, undefined, mobTd));
 
     td.addProp("nextMobId", TypeDescriptor.Int32);

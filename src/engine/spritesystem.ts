@@ -97,7 +97,9 @@ export class SpriteSystem extends EngineSystemWithTrackers {
         // TODO remove texture if no more components use it
       }
     } else {
-      components.push(comp as SpriteComp);
+      if (components.indexOf(spriteComp) < 0) {
+        components.push(spriteComp);
+      }
     }
   }
 
@@ -116,7 +118,7 @@ export class SpriteSystem extends EngineSystemWithTrackers {
       // Fill instance data
       let instancesCount = components.length;
       if (instancesCount === 0) {
-        return;
+        continue;
       }
       let geometryInstances = this.geometryInstancesForTexture[idxTex];
       let instanceData = geometryInstances.allocate(instancesCount);
