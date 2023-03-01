@@ -123,10 +123,7 @@ export class FullScreenQuad extends Component {
             color -= vec4(0.02, 0.02, 0.02, 0.0);
          } else {
            // Inner pixel
-           vec2 p = (gl_FragCoord.xy/u_viewport.y) * 2.0 - 1.0;
-           float n = snoise(p.xy * 256.0);
-           n = 0.5 + 0.5 * n;
-           color -= vec4(vec3(n * 0.06), 0.0);
+           
          }
          ${this.additionalFragmentCode ?? ""}
        }

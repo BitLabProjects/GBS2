@@ -5,6 +5,7 @@ import { Resources } from "./resources";
 
 export class UnitComp extends Component {
   private spriteComp: SpriteComp | undefined;
+  private walkFrame: number = 0;
 
   get sprite(): Sprite | undefined {
     return this.spriteComp?.sprite;
@@ -13,8 +14,15 @@ export class UnitComp extends Component {
   update(unit: UnitState, resources: Resources) {
     if (!this.spriteComp) {
       //this.spriteComp = new SpriteComp(resources.unitSprites[unit.playerId]);
-      this.spriteComp = new SpriteComp(resources.unitSprites[2]);
+      this.spriteComp = new SpriteComp(resources.man1Idle);
       this.node!.addComponent(this.spriteComp);
+    }
+
+    if (unit.dir.length > 0.1) {
+      this.spriteComp.sprite = resources.man1Walk[Math.floor(this.walkFrame) % resources.man1Walk.length];
+      this.walkFrame += 0.1;
+    } else {
+      this.spriteComp.sprite = resources.man1Idle;
     }
 
     // animate sprite color based on knock strength
@@ -26,5 +34,6 @@ export class UnitComp extends Component {
     let t = this.node!.transform as Transform2D;
     t.x = unit.pos.x;
     t.y = unit.pos.y;
+    t.scaleX = unit.dir.x >= 0 ? 1 : -1;
   }
 }

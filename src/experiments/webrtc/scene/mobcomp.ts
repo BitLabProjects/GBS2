@@ -1,6 +1,6 @@
 import { Component, Transform2D } from "../../../engine/node";
 import { Sprite, SpriteComp } from "../../../engine/spritecomp";
-import { MobState } from "../state/gamestate";
+import { EMobType, MobState } from "../state/gamestate";
 import { Resources } from "./resources";
 
 export class MobComp extends Component {
@@ -16,11 +16,19 @@ export class MobComp extends Component {
       this.node!.addComponent(this.spriteComp);
     }
 
-    //hitTime goes from zero to infinity, the divider must go from 1 to infinity
-    let divider = 1 + mob.hitTime * 0.002;
-    // Add 90 degrees to the sin to have an immediate feedback
-    let idxFrame = 1 + Math.round(Math.sin(mob.hitTime * 0.1 + Math.PI * 0.5) / divider);
-    this.spriteComp.sprite = resources.mobSprites[mob.type][idxFrame];
+    switch (mob.type) {
+      case EMobType.Dummy: {
+        //hitTime goes from zero to infinity, the divider must go from 1 to infinity
+        let divider = 1 + mob.hitTime * 0.002;
+        // Add 90 degrees to the sin to have an immediate feedback
+        let idxFrame = 1 + Math.round(Math.sin(mob.hitTime * 0.1 + Math.PI * 0.5) / divider);
+        this.spriteComp.sprite = resources.mobSprites[mob.type][idxFrame];
+      } break;
+
+      case EMobType.Zombie: {
+        this.spriteComp.sprite = resources.mobSprites[mob.type][0];
+      } break;
+    }
 
     let t = this.node!.transform as Transform2D;
     t.x = mob.pos.x;

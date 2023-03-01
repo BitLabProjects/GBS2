@@ -18,7 +18,7 @@ import { IStateComponent } from "./scene/istatecomp";
 import { MobComp } from "./scene/mobcomp";
 import { Resources } from "./scene/resources";
 import { UnitComp } from "./scene/unitcomp";
-import { DeadUnitState, EMobType, GameState, MobState, ProjectileState, UnitState } from "./state/gamestate";
+import { DeadUnitState, EMobState, EMobType, GameState, MobState, ProjectileState, UnitState } from "./state/gamestate";
 import { HeartComp } from "./ui/heartcomp";
 //import { JoystickComp } from "./JoystickComp";
 
@@ -77,7 +77,13 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     this.state = new GameState();
 
     for (let i = 0; i < 25; i++) {
-      this.state.mobs.push(new MobState(this.state.nextMobId, EMobType.Dummy, Vect.createRandom(worldBounds), 100000));
+      this.state.mobs.push(new MobState(this.state.nextMobId, 
+                                        EMobType.Zombie, 
+                                        Vect.createRandom(worldBounds), 
+                                        100000, 
+                                        -1, 
+                                        EMobState.Idle,
+                                        0));
       this.state.nextMobId += 1;
     }
     //this.state.mobs.push(new MobState(EMobType.Dummy, new Vect(0, 0), 0));
@@ -146,7 +152,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     }
 
     // Add or update pressed keys
-    for(let key in this.actualKeys) {
+    for (let key in this.actualKeys) {
       let currVal = this.currKeys[key];
       let actualVal = this.actualKeys[key];
       if (actualVal === KeyState.JustPressed || actualVal === KeyState.Pressed) {
@@ -159,18 +165,10 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
       this.currKeys[key] = currVal;
     }
     // Remove keys no longer pressed
-    for(let key in this.currKeys) {
+    for (let key in this.currKeys) {
       if (this.actualKeys[key] === undefined || this.actualKeys[key] === KeyState.Released) {
         delete this.currKeys[key];
       }
-    }
-
-    let line = "";
-    for(let key in this.currKeys) {
-      line += `, ${key} = ${this.currKeys[key]}`;
-    }
-    if (line !== "") {
-      console.log(line);
     }
 
     input.keyLeft = this.currKeys["ArrowLeft"] || KeyState.Released;
@@ -238,9 +236,11 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
       if (velLen > 0) {
         unitState.dir.copy(vel);
         unitState.dir.scale(1 / velLen);
+      } else {
+        unitState.dir.scale(0);
       }
-      unitState.pos.x += (vel.x * 50 + unitState.knock.x) * deltaTime;
-      unitState.pos.y += (vel.y * 50 + unitState.knock.y) * deltaTime;
+      unitState.pos.x += (vel.x * 100 + unitState.knock.x) * deltaTime;
+      unitState.pos.y += (vel.y * 100 + unitState.knock.y) * deltaTime;
       unitState.pos.x = Math.max(worldBounds.x, Math.min(worldBounds.x + worldBounds.width, unitState.pos.x));
       unitState.pos.y = Math.max(worldBounds.y, Math.min(worldBounds.y + worldBounds.height, unitState.pos.y));
 
@@ -336,6 +336,66 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
           mob.hitTime += this.timestep;
           break;
 
+        case EMobType.Zombie:
+          switch (mob.state) {
+            case EMobState.Idle: {
+              // Find nearest player
+              let idxUnit = this.state.findUnitNearPos(mob.pos, 16 * 10);
+              if (idxUnit >= 0) {
+                mob.attackPlayerId = this.state.units[idxUnit].playerId;
+                mob.state = EMobState.Follow;
+              }
+            } break;
+
+            case EMobState.Follow:
+            case EMobState.Attack: {
+              // Follow the player
+              let idxUnit = this.state.getPlayerById(mob.attackPlayerId);
+              if (idxUnit < 0) {
+                // Player left the game
+                mob.state = EMobState.Idle;
+
+              } else {
+                let unit = this.state.units[idxUnit];
+                let dir = unit.pos.getSubtracted(mob.pos);
+                let dirLen = dir.length;
+                if (mob.state === EMobState.Attack) {
+                  if (mob.stateTime > 0) {
+                    mob.stateTime -= deltaTime;
+                  } else {
+                    if (dirLen < 30) {
+                      // Attack
+                      // Hit and knockback
+                      unit.life -= 1;
+                      unit.knock.copy(dir);
+                      unit.knock.scale(0.8);
+
+                      mob.stateTime = 2 + this.state.nextRandF() * 3;
+                    } else {
+                      mob.state = EMobState.Follow;
+                    }
+                  }
+
+                } else {
+                  if (dirLen < 30) {
+                    mob.stateTime = 1 + this.state.nextRandF();
+                    mob.state = EMobState.Attack;
+                    
+                  } else if (dirLen > 16 * 20) {
+                    // Disengage
+                    mob.attackPlayerId = -1;
+                    mob.state = EMobState.Idle;
+                    
+                  } else {
+                    // Walk towards player
+                    dir.scale(1 / dirLen);
+                    mob.pos.addScaled(dir, 20 * deltaTime);
+                  }
+                }
+              }
+            } break;
+          } break;
+
         default:
           break;
       }
@@ -405,7 +465,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
       let spriteComp: SpriteComp;
       if (this.deadUnitSprites.length <= i) {
         //spriteComp = new SpriteComp(this.resources.unitSprites[unit.playerId]);
-        spriteComp = new SpriteComp(this.resources.unitSprites[2]);
+        spriteComp = new SpriteComp(this.resources.man1Idle);
         this.deadUnitSprites.push(spriteComp);
         Node.createFromComp(this.scene, spriteComp);
       } else {

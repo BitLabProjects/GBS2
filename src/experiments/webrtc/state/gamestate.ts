@@ -1,4 +1,4 @@
-import { TypeDescriptor, TypeKind } from "../../../utils/objutils";
+import { ObjUtils, TypeDescriptor, TypeKind } from "../../../utils/objutils";
 import { Vect } from "../../../utils/vect";
 
 export class UnitState {
@@ -30,13 +30,23 @@ export class DeadUnitState {
 export enum EMobType {
   Unknown = 0,
   Dummy = 1,
+  Zombie = 2,
+}
+export enum EMobState {
+  Idle = 0,
+  Follow = 1,
+  GoToTarget = 2,
+  Attack = 3,
 }
 export class MobState {
   constructor(
     public mobId: number,
     public type: EMobType, 
     public pos: Vect, 
-    public hitTime: number) {
+    public hitTime: number,
+    public attackPlayerId: number,
+    public state: EMobState,
+    public stateTime: number,) {
   }
 }
 
@@ -47,6 +57,7 @@ export class GameState {
   deadUnits: DeadUnitState[];
   mobs: MobState[];
   nextMobId: number;
+  randVal: number;
 
   constructor() {
     this.time = 0;
@@ -55,6 +66,25 @@ export class GameState {
     this.deadUnits = [];
     this.mobs = [];
     this.nextMobId = 1;
+    this.randVal = 0;
+  }
+
+  nextRand(max: number): number {
+    this.randVal = ObjUtils.rand(this.randVal);
+    return this.randVal % max;
+  }
+  nextRandF(): number {
+    this.randVal = ObjUtils.rand(this.randVal);
+    return (this.randVal % 10000) / 10000;
+  }
+
+  getPlayerById(playerId: number): number {
+    for (let [i, unit] of this.units.entries()) {
+      if (unit.playerId === playerId) {
+        return i;
+      }
+    }
+    return -1;
   }
 
   findMobNearPos(pos: Vect, range: number): number {
@@ -62,6 +92,19 @@ export class GameState {
     let nearestDist = range;
     for (let [i, mob] of this.mobs.entries()) {
       let currDist = mob.pos.distanceTo(pos);
+      if (currDist < nearestDist) {
+        idxNearest = i;
+        nearestDist = currDist;
+      }
+    }
+    return idxNearest;
+  }
+
+  findUnitNearPos(pos: Vect, range: number): number {
+    let idxNearest = -1;
+    let nearestDist = range;
+    for (let [i, unit] of this.units.entries()) {
+      let currDist = unit.pos.distanceTo(pos);
       if (currDist < nearestDist) {
         idxNearest = i;
         nearestDist = currDist;
@@ -107,9 +150,13 @@ export class GameState {
     mobTd.addProp("type", TypeDescriptor.Int32);
     mobTd.addProp("pos", Vect.TypeDescriptor);
     mobTd.addProp("hitTime", TypeDescriptor.Float32);
+    mobTd.addProp("attackPlayerId", TypeDescriptor.Int32);
+    mobTd.addProp("state", TypeDescriptor.Int32);
+    mobTd.addProp("stateTime", TypeDescriptor.Float32);
     td.addProp("mobs", new TypeDescriptor(TypeKind.Array, undefined, mobTd));
 
     td.addProp("nextMobId", TypeDescriptor.Int32);
+    td.addProp("randVal", TypeDescriptor.Int32);
 
     return td;
   }
