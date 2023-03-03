@@ -74,15 +74,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     this.state = new GameState();
 
     for (let i = 0; i < 5; i++) {
-      this.state.mobs.push(new MobState(this.state.nextMobId, 
-                                        EMobType.Zombie, 
-                                        Vect.createRandom(worldBounds), 
-                                        100000, 
-                                        -1, 
-                                        EMobState.Idle,
-                                        0,
-                                        10));
-      this.state.nextMobId += 1;
+      this.state.spawnMob(EMobType.ZombieSpawner, Vect.createRandom(worldBounds), 1000);
     }
     //this.state.mobs.push(new MobState(EMobType.Dummy, new Vect(0, 0), 0));
     this.unitComps = new Map<number, UnitComp>();
@@ -345,11 +337,28 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
         case EMobType.Dummy:
           break;
 
+        case EMobType.ZombieSpawner:
+          switch (mob.state) {
+            case EMobState.Idle: {
+              if (mob.stateTime <= 0) {
+                if (this.state.mobs.length < 100) {
+                  this.state.spawnMob(EMobType.Zombie, 
+                    this.state.nextRandVect(80, 150, mob.pos), 
+                    10);
+                  }
+                mob.stateTime = 3 + this.state.nextRandF() * 2;
+              } else {
+                mob.stateTime -= deltaTime;
+              }
+            } break;
+          }
+          break;
+
         case EMobType.Zombie:
           switch (mob.state) {
             case EMobState.Idle: {
               // Find nearest player
-              let idxUnit = this.state.findUnitNearPos(mob.pos, 16 * 10);
+              let idxUnit = this.state.findUnitNearPos(mob.pos, 16 * 20);
               if (idxUnit >= 0) {
                 mob.attackPlayerId = this.state.units[idxUnit].playerId;
                 mob.state = EMobState.Follow;
@@ -390,7 +399,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
                     mob.stateTime = 1 + this.state.nextRandF();
                     mob.state = EMobState.Attack;
                     
-                  } else if (dirLen > 16 * 20) {
+                  } else if (dirLen > 16 * 30) {
                     // Disengage
                     mob.attackPlayerId = -1;
                     mob.state = EMobState.Idle;

@@ -33,6 +33,7 @@ export enum EMobType {
   Unknown = 0,
   Dummy = 1,
   Zombie = 2,
+  ZombieSpawner = 3,
 }
 export enum EMobState {
   Idle = 0,
@@ -71,7 +72,7 @@ export class GameState {
     this.deadUnits = [];
     this.mobs = [];
     this.nextMobId = 1;
-    this.randVal = 0;
+    this.randVal = 1337;
   }
 
   nextRand(max: number): number {
@@ -81,6 +82,12 @@ export class GameState {
   nextRandF(): number {
     this.randVal = ObjUtils.rand(this.randVal);
     return (this.randVal % 10000) / 10000;
+  }
+  nextRandVect(radiusMin: number, radiusMax: number, center: Vect): Vect {
+    let alpha = this.nextRandF() * Math.PI;
+    let radius = radiusMin + this.nextRandF() * (radiusMax - radiusMin);
+    return new Vect(center.x + Math.cos(alpha) * radius,
+                    center.y + Math.sin(alpha) * radius);
   }
 
   getPlayerById(playerId: number): number {
@@ -116,6 +123,20 @@ export class GameState {
       }
     }
     return idxNearest;
+  }
+
+  spawnMob(type: EMobType, 
+           pos: Vect, 
+           life: number) {
+    this.mobs.push(new MobState(this.nextMobId, 
+                                type, 
+                                pos, 
+                                100000, 
+                                -1, 
+                                EMobState.Idle,
+                                0,
+                                life));
+    this.nextMobId += 1;
   }
 
   static readonly TypeDescriptor: TypeDescriptor = GameState.createTypeDescriptor();

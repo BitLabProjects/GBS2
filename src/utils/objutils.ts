@@ -225,6 +225,6 @@ export class ObjUtils {
   public static rand(prevValue: number): number {
     // https://en.wikipedia.org/wiki/Linear_congruential_generator
     // Use Borland C/C++ constants
-    return (22695477 * prevValue + 1) % (2 << 32);
+    return (22695477 * prevValue + 1) % 0xFFFFFFFF;
   }
 }

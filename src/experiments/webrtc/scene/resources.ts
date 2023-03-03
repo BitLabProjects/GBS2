@@ -23,6 +23,7 @@ export class Resources {
     this.mobSprites = [];
     this.mobSprites[EMobType.Dummy] = Resources.loadSprites(engine, `webrtc/dummy.png`, 27, 12, 3, 1, new Vect(5, 0));
     this.mobSprites[EMobType.Zombie] = Resources.loadSprites(engine, `webrtc/art/zombie.png`, 32, 32, 1, 1, new Vect(16, 0));
+    this.mobSprites[EMobType.ZombieSpawner] = Resources.loadSprites(engine, `webrtc/art/spawner.png`, 32, 32, 1, 1, new Vect(16, 16));
   }
 
   static loadSprites(engine: Engine, uriOrTex: string | Texture, 
