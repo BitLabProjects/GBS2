@@ -73,7 +73,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
   onCreate() {
     this.state = new GameState();
 
-    for (let i = 0; i < 25; i++) {
+    for (let i = 0; i < 5; i++) {
       this.state.mobs.push(new MobState(this.state.nextMobId, 
                                         EMobType.Zombie, 
                                         Vect.createRandom(worldBounds), 
@@ -117,9 +117,6 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     return ObjUtils.cloneDiscardingTypes(this.state);
   }
 
-  /**
-   * By default, use the auto deserializer.
-   */
   deserialize(value: SerializedState): void {
     this.state = ObjUtils.cloneUsingTypeDescriptor(value, GameState.TypeDescriptor);
   }
@@ -288,17 +285,23 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
           unit.lastHitByPlayerId = projectile.playerId;
           unit.knock.copy(projectile.vel);
           unit.knock.scale(0.8);
+          
+          break;
         }
       }
 
-      // Hit mobs
-      for (let [j, mob] of this.state.mobs.entries()) {
-        if (this.spriteCollides(projectile.pos, projectileDelta, mob.pos, this.mobComps.get(mob.mobId)!.sprite)) {
-          projectile.life = 0;
-
-          mob.hitTime = 0;
-          mob.life -= 1;
-          mobHitByIdxUnit[j] = projectile.playerId;
+      if (projectile.life > 0) {
+        // Hit mobs
+        for (let [j, mob] of this.state.mobs.entries()) {
+          if (this.spriteCollides(projectile.pos, projectileDelta, mob.pos, this.mobComps.get(mob.mobId)!.sprite)) {
+            projectile.life = 0;
+  
+            mob.hitTime = 0;
+            mob.life -= 1;
+            mobHitByIdxUnit[j] = projectile.playerId;
+  
+            break;
+          }
         }
       }
 
@@ -316,9 +319,10 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
       while (i < this.state.mobs.length) {
         if (this.state.mobs[i].life <= 0) {
           // Remove the mob by replacing it with the last in the list
-          let lastMob = this.state.mobs.pop();
           if (i < this.state.mobs.length - 1) {
-            this.state.mobs[i] = lastMob!;
+            this.state.mobs[i] = this.state.mobs.pop()!;
+          } else {
+            this.state.mobs.pop();
           }
 
           // Assign score
