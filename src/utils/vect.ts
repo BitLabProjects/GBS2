@@ -20,6 +20,11 @@ export class Vect {
     this.y = other.y;
   }
 
+  set(x: number, y: number) {
+    this.x = x;
+    this.y = y;
+  }
+
   distanceTo(other: Vect): number {
     let dx = this.x - other.x;
     let dy = this.y - other.y;

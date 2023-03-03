@@ -12,7 +12,7 @@ import { ObjUtils, TypeDescriptor, TypeKind } from "../../utils/objutils";
 import { Rect } from "../../utils/rect";
 import { Vect } from "../../utils/vect";
 import { FullScreenQuad } from "../flocking/fullscreenquad";
-import { EJoystickType, JoystickComp } from "./joystickcomp";
+import { EJoystickType, JoystickComp } from "./ui/joystickcomp";
 import { FollowCameraComp } from "./scene/followcameracomp";
 import { IStateComponent } from "./scene/istatecomp";
 import { MobComp } from "./scene/mobcomp";
@@ -20,6 +20,7 @@ import { Resources } from "./scene/resources";
 import { UnitComp } from "./scene/unitcomp";
 import { DeadUnitState, EMobState, EMobType, GameState, MobState, ProjectileState, UnitState } from "./state/gamestate";
 import { HeartComp } from "./ui/heartcomp";
+import { UI } from "./ui/ui";
 //import { JoystickComp } from "./JoystickComp";
 
 const worldBounds: Rect = new Rect(-400, -400, 800, 800);
@@ -61,11 +62,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
   private state: GameState;
 
-  private nodeRootUI: NodeUI;
-  private joystickCompLeft: JoystickComp;
-  private joystickCompRight: JoystickComp;
-  private joystickCompGrab: JoystickComp;
-  private nodeUILifeContainer: NodeUI;
+  private ui: UI;
 
   private mapBackgroundComp: MapBackgroundComp;
   private followCameraComp: FollowCameraComp;
@@ -105,28 +102,10 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
     this.draw();
 
-    // Show touch controls only on mobile and request fullscreen
-    let uiRootComp = new UIRootComp();
-    uiRootComp.uiTexture = Texture.createFromUrl(this.scene.engine, "webrtc/ui.png", false);
-    this.nodeRootUI = NodeUI.createFromComp(this.scene, uiRootComp);
-    this.nodeUILifeContainer = NodeUI.createFromComp(this.scene, new HeartComp(), this.nodeRootUI);
-    this.nodeUILifeContainer.transformUI.alignH = Align.Middle;
-    this.nodeUILifeContainer.transformUI.alignV = Align.Begin;
-    this.nodeUILifeContainer.transformUI.width = 18 * 10;
-    this.nodeUILifeContainer.transformUI.height = 30;
-    this.nodeUILifeContainer.transformUI.margin = Margin.uniform(5);
+    this.ui = new UI(this.scene);
 
     if (this.scene.engine.isMobile) {
       this.scene.engine.requestFullscreen();
-
-      this.joystickCompLeft = new JoystickComp(EJoystickType.Movement);
-      NodeUI.createFromComp(this.scene, this.joystickCompLeft, this.nodeRootUI);
-
-      this.joystickCompRight = new JoystickComp(EJoystickType.Shoot);
-      NodeUI.createFromComp(this.scene, this.joystickCompRight, this.nodeRootUI);
-
-      this.joystickCompGrab = new JoystickComp(EJoystickType.Grab);
-      NodeUI.createFromComp(this.scene, this.joystickCompGrab, this.nodeRootUI);
     }
   }
 
@@ -148,7 +127,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
   getInput(): DefaultInput {
     let input = new DefaultInput();
 
-    if (this.joystickCompGrab?.isTouching) {
+    if (this.ui.isJoystickGrabPressed) {
       this.actualKeys['c'] = KeyState.Pressed;
     }
 
@@ -178,9 +157,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     input.keyDown = this.currKeys["ArrowDown"] || KeyState.Released;
     input.keySpace = this.currKeys[" "] || KeyState.Released;
     input.keyC = this.currKeys["c"] || KeyState.Released;
-    input.joystick1 = new Vect(this.joystickCompLeft?.dx ?? 0, this.joystickCompLeft?.dy ?? 0);
-    input.joystick2 = new Vect(this.joystickCompRight?.dx ?? 0, this.joystickCompRight?.dy ?? 0);
-    input.joystick3 = new Vect(this.joystickCompGrab?.dx ?? 0, this.joystickCompGrab?.dy ?? 0);
+    this.ui.fillInput(input);
     return input;
   }
   getStartInput(): DefaultInput {
@@ -522,8 +499,8 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
     // Update UI
     if (this.currentPlayerId >= 0) {
-      let unit = this.state.units[this.currentPlayerId];
-      (this.nodeUILifeContainer.getComponent(HeartComp) as HeartComp).onUpdateLife(unit.life, unit.score);
+      let playerUnit = this.state.units[this.currentPlayerId];
+      this.ui.updateUI(playerUnit);
     }
   }
 

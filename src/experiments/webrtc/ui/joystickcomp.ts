@@ -1,11 +1,11 @@
-import { IInputHandler, KeyEventArgs, TouchEventArgs } from "../../engine/engine";
-import { Align, Component, Margin, NodeUI, TransformUI } from "../../engine/node";
-import { Sprite, SpriteComp } from "../../engine/spritecomp";
-import { Texture } from "../../engine/texture";
-import { TouchDragHandler } from "../../engine/touchdraghandler";
-import { Color } from "../../utils/color";
-import { Rect } from "../../utils/rect";
-import { Vect } from "../../utils/vect";
+import { IInputHandler, KeyEventArgs, TouchEventArgs } from "../../../engine/engine";
+import { Align, Component, Margin, NodeUI, TransformUI } from "../../../engine/node";
+import { Sprite, SpriteComp } from "../../../engine/spritecomp";
+import { Texture } from "../../../engine/texture";
+import { TouchDragHandler } from "../../../engine/touchdraghandler";
+import { Color } from "../../../utils/color";
+import { Rect } from "../../../utils/rect";
+import { Vect } from "../../../utils/vect";
 
 export enum EJoystickType {
   Movement,
