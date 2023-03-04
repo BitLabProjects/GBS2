@@ -11,9 +11,61 @@ export class UnitState {
     public score: number,
     public coolDown: number,
     public lastHitByPlayerId: number,
-    public carryMobId: number) { }
+    public carryMobId: number,
+    public inventoryItems: InventoryItemState[],
+    public rightHandItemIdx: number) { }
 
   getId() { return this.playerId; }
+
+  hasItem(type: EItemType): boolean {
+    for(let item of this.inventoryItems) {
+      if (item.type === type) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  addItemToInventory(type: EItemType, quantity: number) {
+    this.inventoryItems.push(new InventoryItemState(type, quantity));
+    if (this.rightHandItemIdx < 0) {
+      this.rightHandItemIdx = 0;
+    }
+  }
+
+  grabNextItem() {
+    if (this.inventoryItems.length === 0) {
+      return;
+    }
+    this.rightHandItemIdx = (this.rightHandItemIdx + 1) % this.inventoryItems.length;
+    /*
+    // This also works when the unit does not have a current item in hand, because i will start at zero
+    let i = this.rightHandItemIdx + 1;
+
+    // Cycle until we find a weapon, or go back to the current one
+    let triedItems = 0;
+    while (triedItems < this.inventoryItems.length) {
+      switch (this.inventoryItems[i].type) {
+        case EItemType.Pistol:
+        case EItemType.GrenadeLauncher:
+          this.rightHandItemIdx = i;
+          return;
+      }
+      i = (i + 1) % this.inventoryItems.length;
+      triedItems += 1;
+    }
+    */
+  }
+}
+export enum EItemType {
+  Pistol = 1,
+  Grenade = 2,
+}
+
+export class InventoryItemState {
+  constructor(
+    public type: EItemType,
+    public quantity: number) { }
 }
 
 export enum EProjectileType {
@@ -43,6 +95,10 @@ export enum EMobType {
   Dummy = 1,
   Zombie = 2,
   ZombieSpawner = 3,
+  ShopPortal = 4,
+  ShopBuyPistol = 5,
+  ShopBuyGrenade = 6,
+  Tree = 7,
 }
 export enum EMobState {
   Idle = 0,
@@ -53,8 +109,8 @@ export enum EMobState {
 export class MobState {
   constructor(
     public mobId: number,
-    public type: EMobType, 
-    public pos: Vect, 
+    public type: EMobType,
+    public pos: Vect,
     public hitTime: number,
     public attackPlayerId: number,
     public state: EMobState,
@@ -94,7 +150,7 @@ export class GameState {
     let alpha = this.nextRandF() * Math.PI;
     let radius = radiusMin + this.nextRandF() * (radiusMax - radiusMin);
     return new Vect(center.x + Math.cos(alpha) * radius,
-                    center.y + Math.sin(alpha) * radius);
+      center.y + Math.sin(alpha) * radius);
   }
 
   getPlayerById(playerId: number): number {
@@ -133,25 +189,25 @@ export class GameState {
   }
 
   spawnProjectile(type: EProjectileType,
-                  pos: Vect,
-                  vel: Vect,
-                  life: number,
-                  playerId: number) {
+    pos: Vect,
+    vel: Vect,
+    life: number,
+    playerId: number) {
     this.projectiles.push(new ProjectileState(this.nextProjectileId, type, pos, vel, life, playerId));
     this.nextProjectileId += 1;
   }
 
-  spawnMob(type: EMobType, 
-           pos: Vect, 
-           life: number) {
-    this.mobs.push(new MobState(this.nextMobId, 
-                                type, 
-                                pos, 
-                                100000, 
-                                -1, 
-                                EMobState.Idle,
-                                0,
-                                life));
+  spawnMob(type: EMobType,
+    pos: Vect,
+    life: number) {
+    this.mobs.push(new MobState(this.nextMobId,
+      type,
+      pos,
+      100000,
+      -1,
+      EMobState.Idle,
+      0,
+      life));
     this.nextMobId += 1;
   }
 
@@ -160,6 +216,10 @@ export class GameState {
 
     let td = new TypeDescriptor(TypeKind.Generic, GameState);
     td.addProp("time", TypeDescriptor.Float32);
+
+    let inventoryItemTd = new TypeDescriptor(TypeKind.Generic, InventoryItemState);
+    inventoryItemTd.addProp("type", TypeDescriptor.Int32);
+    inventoryItemTd.addProp("quantity", TypeDescriptor.Int32);
 
     let unitTd = new TypeDescriptor(TypeKind.Generic, UnitState);
     unitTd.addProp("playerId", TypeDescriptor.Int32);
@@ -171,8 +231,10 @@ export class GameState {
     unitTd.addProp("coolDown", TypeDescriptor.Int32);
     unitTd.addProp("lastHitByPlayerId", TypeDescriptor.Int32);
     unitTd.addProp("carryMobId", TypeDescriptor.Int32);
+    unitTd.addProp("inventoryItems", new TypeDescriptor(TypeKind.Array, undefined, inventoryItemTd));
+    unitTd.addProp("rightHandItemIdx", TypeDescriptor.Int32);
     td.addProp("units", new TypeDescriptor(TypeKind.Array, undefined, unitTd));
-    
+
     let projectileTd = new TypeDescriptor(TypeKind.Generic, ProjectileState);
     projectileTd.addProp("projectileId", TypeDescriptor.Int32);
     projectileTd.addProp("type", TypeDescriptor.Int32);
@@ -181,13 +243,13 @@ export class GameState {
     projectileTd.addProp("life", TypeDescriptor.Int32);
     projectileTd.addProp("playerId", TypeDescriptor.Int32);
     td.addProp("projectiles", new TypeDescriptor(TypeKind.Array, undefined, projectileTd));
-    
+
     let deadUnitTd = new TypeDescriptor(TypeKind.Generic, DeadUnitState);
     deadUnitTd.addProp("playerId", TypeDescriptor.Int32);
     deadUnitTd.addProp("x", TypeDescriptor.Float32);
     deadUnitTd.addProp("y", TypeDescriptor.Float32);
     deadUnitTd.addProp("fadeTime", TypeDescriptor.Float32);
-    td.addProp("deadUnits",  new TypeDescriptor(TypeKind.Array, undefined, deadUnitTd));
+    td.addProp("deadUnits", new TypeDescriptor(TypeKind.Array, undefined, deadUnitTd));
 
     let mobTd = new TypeDescriptor(TypeKind.Generic, MobState);
     mobTd.addProp("mobId", TypeDescriptor.Int32);

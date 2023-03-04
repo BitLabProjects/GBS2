@@ -13,7 +13,6 @@ export class ProjectileComp extends Component {
 
   update(projectile: ProjectileState, resources: Resources) {
     if (!this.spriteComp) {
-      //this.spriteComp = new SpriteComp(resources.unitSprites[unit.playerId]);
       this.spriteComp = new SpriteComp(resources.projectileSprites[projectile.type][projectile.type]);
       this.node!.addComponent(this.spriteComp);
     }

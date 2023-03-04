@@ -56,6 +56,17 @@ export class Vect {
     }
   }
 
+  vectorTo(other: Vect): Vect {
+    let result = other.getSubtracted(this);
+    return result;
+  }
+
+  versorTo(other: Vect): Vect {
+    let result = other.getSubtracted(this);
+    result.normalize();
+    return result;
+  }
+
   addScaled(other: Vect, scale: number) {
     this.x += other.x * scale;
     this.y += other.y * scale;

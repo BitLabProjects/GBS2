@@ -39,8 +39,22 @@ export class UI {
     }
   }
 
-  get isJoystickGrabPressed() {
-    return this.joystickCompGrab?.isTouching;
+  get isJoystickShootTapped() {
+    if (this.joystickCompRight?.tapped) {
+      this.joystickCompRight.tapped = false;
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  get isJoystickGrabTapped() {
+    if (this.joystickCompGrab?.tapped) {
+      this.joystickCompGrab.tapped = false;
+      return true;
+    } else {
+      return false;
+    }
   }
 
   fillInput(input: DefaultInput) {

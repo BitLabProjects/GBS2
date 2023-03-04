@@ -18,6 +18,7 @@ export class JoystickComp extends Component implements IInputHandler {
   touchDragHandler: TouchDragHandler;
   dx: number = 0;
   dy: number = 0;
+  tapped: boolean;
 
   constructor(private readonly type: EJoystickType) {
     super();
@@ -35,6 +36,9 @@ export class JoystickComp extends Component implements IInputHandler {
           this.dx = 0;
           this.dy = 0;
         }
+      },
+      () => {
+        this.tapped = true;
       });
   }
 

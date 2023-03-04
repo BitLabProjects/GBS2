@@ -18,13 +18,14 @@ import { IStateComponent } from "./scene/istatecomp";
 import { MobComp } from "./scene/mobcomp";
 import { Resources } from "./scene/resources";
 import { UnitComp } from "./scene/unitcomp";
-import { DeadUnitState, EMobState, EMobType, EProjectileType, GameState, MobState, ProjectileState, UnitState } from "./state/gamestate";
+import { DeadUnitState, EItemType, EMobState, EMobType, EProjectileType, GameState, InventoryItemState, MobState, ProjectileState, UnitState } from "./state/gamestate";
 import { HeartComp } from "./ui/heartcomp";
 import { UI } from "./ui/ui";
 import { ProjectileComp } from "./scene/projectilecomp";
 //import { JoystickComp } from "./JoystickComp";
 
-const worldBounds: Rect = new Rect(-400, -400, 800, 800);
+const worldBounds: Rect = new Rect(-1000, -1000, 2000, 2000);
+const worldBoundsSmall: Rect = new Rect(-100, -100, 200, 200);
 
 export class WebRTCSceneHost extends Scene {
   constructor(engine: Engine, roomName: string) {
@@ -73,9 +74,21 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
   onCreate() {
     this.state = new GameState();
 
-    for (let i = 0; i < 5; i++) {
+    // Place spawners
+    for (let i = 0; i < 10; i++) {
       this.state.spawnMob(EMobType.ZombieSpawner, Vect.createRandom(worldBounds), 1000);
     }
+
+    // Place shop things
+    //this.state.spawnMob(EMobType.ShopPortal, Vect.createRandom(worldBounds), 1000);
+    this.state.spawnMob(EMobType.ShopBuyPistol, Vect.createRandom(worldBoundsSmall), 1000);
+    this.state.spawnMob(EMobType.ShopBuyGrenade, Vect.createRandom(worldBoundsSmall), 1000);
+
+    // Place some trees
+    for (let i = 0; i < 25; i++) {
+      this.state.spawnMob(EMobType.Tree, Vect.createRandom(worldBounds), 200);
+    }
+
     //this.state.mobs.push(new MobState(EMobType.Dummy, new Vect(0, 0), 0));
     this.unitComps = new Map<number, UnitComp>();
     this.projectileComps = new Map<number, ProjectileComp>();
@@ -114,8 +127,11 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
   getInput(): DefaultInput {
     let input = new DefaultInput();
 
-    if (this.ui.isJoystickGrabPressed) {
+    if (this.ui.isJoystickGrabTapped) {
       this.actualKeys['c'] = KeyState.Pressed;
+    }
+    if (this.ui.isJoystickShootTapped) {
+      this.actualKeys['v'] = KeyState.Pressed;
     }
 
     // Add or update pressed keys
@@ -144,6 +160,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     input.keyDown = this.currKeys["ArrowDown"] || KeyState.Released;
     input.keySpace = this.currKeys[" "] || KeyState.Released;
     input.keyC = this.currKeys["c"] || KeyState.Released;
+    input.keyV = this.currKeys["v"] || KeyState.Released;
     this.ui.fillInput(input);
     return input;
   }
@@ -178,7 +195,18 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
       let unitState = state.units[playerId];
       if (!unitState) {
         let x = playerId === 0 ? -150 : +150;
-        unitState = new UnitState(playerId, new Vect(x, 0), new Vect(0, 0), new Vect(1, 0), SimpleGame.maxLife, 0, 0, -1, 0);
+        unitState = new UnitState(
+          playerId,
+          new Vect(x, 0),
+          new Vect(0, 0),
+          new Vect(1, 0),
+          SimpleGame.maxLife,
+          0,
+          0,
+          -1,
+          0,
+          [],
+          -1);
         state.units[playerId] = unitState;
       }
 
@@ -186,114 +214,36 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
         this.currentPlayerId = playerId;
       }
 
-      // Generate player velocity from input keys.
-      const vel = new Vect(
-        (KeyStateUtils.isPressed(input.keyLeft) ? -1 : 0) +
-        (KeyStateUtils.isPressed(input.keyRight) ? 1 : 0) +
-        (input.joystick1.x),
-        (KeyStateUtils.isPressed(input.keyDown) ? -1 : 0) +
-        (KeyStateUtils.isPressed(input.keyUp) ? 1 : 0) +
-        (input.joystick1.y),
-      );
-
-
-      // Apply the velocity to the appropriate player.
-      let velLen = vel.length;
-      if (velLen > 0) {
-        unitState.dir.copy(vel);
-        unitState.dir.scale(1 / velLen);
-      } else {
-        unitState.dir.scale(0);
-      }
-      unitState.pos.x += (vel.x * 100 + unitState.knock.x) * deltaTime;
-      unitState.pos.y += (vel.y * 100 + unitState.knock.y) * deltaTime;
-      unitState.pos.x = Math.max(worldBounds.x, Math.min(worldBounds.x + worldBounds.width, unitState.pos.x));
-      unitState.pos.y = Math.max(worldBounds.y, Math.min(worldBounds.y + worldBounds.height, unitState.pos.y));
-
-      unitState.knock.scale(0.85);
-
-      if (unitState.coolDown > 0) {
-        unitState.coolDown = Math.max(0, unitState.coolDown - deltaTime);
-      } else if (unitState.carryMobId > 0) {
-        // Update the mob position or drop it
-        if (input.keyC === KeyState.JustPressed) {
-          unitState.carryMobId = 0;
-        } else {
-          let mobId = state.mobs.findIndex((x) => x.mobId === unitState.carryMobId);
-          state.mobs[mobId].pos.copy(unitState.pos)
-          state.mobs[mobId].pos.y += 8;
-        }
-
-      } else if (input.keyC === KeyState.JustPressed) {
-        let mobIdx = state.findMobNearPos(unitState.pos, 16);
-        if (mobIdx >= 0) {
-          unitState.carryMobId = state.mobs[mobIdx].mobId;
-        }
-
-      } else {
-        let dir: Vect | undefined;
-
-        if (KeyStateUtils.isPressed(input.keySpace)) {
-          dir = unitState.dir.clone();
-        } else if (input.joystick2.x !== 0 || input.joystick2.y !== 0) {
-          dir = new Vect(input.joystick2.x, input.joystick2.y);
-          dir.normalize();
-        }
-
-        // Fire
-        if (dir) {
-          let pos = unitState.pos.clone();
-          // TODO handle height from ground
-          pos.addScaled(dir, 10);
-          pos.addScaled(new Vect(0, 1), 15);
-          state.spawnProjectile(
-            EProjectileType.Pistol,
-            pos,
-            new Vect(dir.x * 360, dir.y * 360),
-            60 * 3, 
-            player.getID());
-          unitState.coolDown = 0.05;
-        }
-      }
+      this.tickPlayerMovement(unitState, input, deltaTime);
+      this.tickPlayerActions(state, unitState, input, deltaTime);
     }
 
     let mobHitByIdxUnit: number[] = [];
 
     for (let [i, projectile] of state.projectiles.entries()) {
-      let projectileDelta = projectile.vel.clone();
-      projectileDelta.scale(deltaTime);
-
-      // Hit units
-      for (let [j, unit] of state.units.entries()) {
-        if (projectile.playerId === j) {
-          continue;
-        }
-        if (SimpleGame.spriteCollides(projectile.pos, projectileDelta, unit.pos)) {
-          projectile.life = 0;
-
-          // Hit and knockback
-          unit.life -= 1;
-          unit.lastHitByPlayerId = projectile.playerId;
-          unit.knock.copy(projectile.vel);
-          unit.knock.scale(0.8);
-          
-          break;
-        }
+      let hitAreaGrenade = false;
+      switch (projectile.type) {
+        case EProjectileType.Grenade: {
+          projectile.vel.scale(0.95);
+          hitAreaGrenade = true;
+        } break;
       }
 
-      if (projectile.life > 0) {
-        // Hit mobs
-        for (let [j, mob] of state.mobs.entries()) {
-          if (SimpleGame.spriteCollides(projectile.pos, projectileDelta, mob.pos)) {
-            projectile.life = 0;
-  
-            mob.hitTime = 0;
-            mob.life -= 1;
-            mobHitByIdxUnit[j] = projectile.playerId;
-  
-            break;
-          }
+      let doDamage = false;
+      if (hitAreaGrenade) {
+        if (projectile.life <= 0) {
+          // The grenade exploded, do damage
+          doDamage = true;
         }
+      } else {
+        doDamage = true;
+      }
+
+      let projectileDelta = projectile.vel.clone();
+      projectileDelta.scale(deltaTime);
+      if (doDamage) {
+        // Hit units
+        this.tickProjectileHit(state, projectile, projectileDelta, hitAreaGrenade, mobHitByIdxUnit);
       }
 
       if (projectile.life <= 0) {
@@ -340,11 +290,11 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
           switch (mob.state) {
             case EMobState.Idle: {
               if (mob.stateTime <= 0) {
-                if (state.mobs.length < 100) {
-                  state.spawnMob(EMobType.Zombie, 
-                    state.nextRandVect(80, 150, mob.pos), 
+                if (state.mobs.length < 500) {
+                  state.spawnMob(EMobType.Zombie,
+                    state.nextRandVect(80, 150, mob.pos),
                     10);
-                  }
+                }
                 mob.stateTime = 3 + state.nextRandF() * 2;
               } else {
                 mob.stateTime -= deltaTime;
@@ -397,12 +347,12 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
                   if (dirLen < 30) {
                     mob.stateTime = 1 + state.nextRandF();
                     mob.state = EMobState.Attack;
-                    
+
                   } else if (dirLen > 16 * 30) {
                     // Disengage
                     mob.attackPlayerId = -1;
                     mob.state = EMobState.Idle;
-                    
+
                   } else {
                     // Walk towards player
                     dir.scale(1 / dirLen);
@@ -444,9 +394,190 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     // }
   }
 
-  static spriteCollides(projectilePos: Vect, projectileDelta: Vect, spritePos: Vect) {
-    let unitCenter = spritePos.clone();
-    return unitCenter.distanceFromSegment(projectilePos, projectileDelta) < 10;
+  tickPlayerMovement(unitState: UnitState, input: DefaultInput, deltaTime: number) {
+    // Generate player velocity from input keys.
+    const vel = new Vect(
+      (KeyStateUtils.isPressed(input.keyLeft) ? -1 : 0) +
+      (KeyStateUtils.isPressed(input.keyRight) ? 1 : 0) +
+      (input.joystick1.x),
+      (KeyStateUtils.isPressed(input.keyDown) ? -1 : 0) +
+      (KeyStateUtils.isPressed(input.keyUp) ? 1 : 0) +
+      (input.joystick1.y),
+    );
+
+    // Apply the velocity to the appropriate player.
+    let velLen = vel.length;
+    if (velLen > 0) {
+      unitState.dir.copy(vel);
+      unitState.dir.scale(1 / velLen);
+    } else {
+      unitState.dir.scale(0);
+    }
+    unitState.pos.x += (vel.x * 100 + unitState.knock.x) * deltaTime;
+    unitState.pos.y += (vel.y * 100 + unitState.knock.y) * deltaTime;
+    unitState.pos.x = Math.max(worldBounds.x, Math.min(worldBounds.x + worldBounds.width, unitState.pos.x));
+    unitState.pos.y = Math.max(worldBounds.y, Math.min(worldBounds.y + worldBounds.height, unitState.pos.y));
+
+    unitState.knock.scale(0.85);
+  }
+
+  tickPlayerActions(state: GameState, unitState: UnitState, input: DefaultInput, deltaTime: number) {
+    if (unitState.coolDown > 0) {
+      unitState.coolDown = Math.max(0, unitState.coolDown - deltaTime);
+      return;
+    }
+
+    if (unitState.carryMobId > 0) {
+      // Update the mob position or drop it
+      if (input.keyC === KeyState.JustPressed) {
+        unitState.carryMobId = 0;
+      } else {
+        let mobId = state.mobs.findIndex((x) => x.mobId === unitState.carryMobId);
+        state.mobs[mobId].pos.copy(unitState.pos)
+        state.mobs[mobId].pos.y += 8;
+      }
+      return;
+    }
+
+    if (input.keyC === KeyState.JustPressed) {
+      let mobIdx = state.findMobNearPos(unitState.pos, 16);
+      if (mobIdx >= 0) {
+        // If the mob is an item, put in inventory, else carry it
+        let mob = this.state.mobs[mobIdx];
+        switch (mob.type) {
+          case EMobType.ShopBuyPistol: {
+            if (!unitState.hasItem(EItemType.Pistol)) {
+              unitState.addItemToInventory(EItemType.Pistol, 1);
+            }
+          } return;
+
+          case EMobType.ShopBuyGrenade: {
+            if (!unitState.hasItem(EItemType.Grenade)) {
+              unitState.addItemToInventory(EItemType.Grenade, 1);
+            }
+          } return;
+        }
+
+        // Not a special mob, carry it
+        unitState.carryMobId = state.mobs[mobIdx].mobId;
+        return;
+      }
+    }
+
+    if (input.keyV === KeyState.JustPressed) {
+      unitState.grabNextItem();
+      return;
+    }
+
+    // If nothing in hand, skip item action
+    if (unitState.rightHandItemIdx < 0) {
+      return;
+    }
+
+    let item = unitState.inventoryItems[unitState.rightHandItemIdx];
+    let projectileType = item.type === EItemType.Grenade ? EProjectileType.Grenade : EProjectileType.Pistol;
+    let projectileLife = projectileType === EProjectileType.Pistol ? 180 : 60;
+
+    let dir: Vect | undefined;
+    if (KeyStateUtils.isPressed(input.keySpace)) {
+      dir = unitState.dir.clone();
+    } else if (input.joystick2.x !== 0 || input.joystick2.y !== 0) {
+      dir = new Vect(input.joystick2.x, input.joystick2.y);
+      dir.normalize();
+    }
+
+    // Fire
+    if (dir) {
+      let pos = unitState.pos.clone();
+      // TODO handle height from ground
+      pos.addScaled(dir, 10);
+      pos.addScaled(new Vect(0, 1), 15);
+      state.spawnProjectile(
+        projectileType,
+        pos,
+        new Vect(dir.x * 360, dir.y * 360),
+        projectileLife,
+        unitState.playerId);
+
+      switch (item.type) {
+        case EItemType.Pistol:
+          unitState.coolDown = 0.05;
+          break;
+
+        case EItemType.Grenade:
+          unitState.coolDown = 2;
+          break;
+
+        default:
+          unitState.coolDown = 1;
+      }
+    }
+  }
+
+  tickProjectileHit(state: GameState, projectile: ProjectileState, projectileDelta: Vect, hitAreaGrenade: boolean, mobHitByIdxUnit: number[]) {
+    for (let [j, unit] of state.units.entries()) {
+      // Avoid auto-hit with ammunition
+      if (projectile.type === EProjectileType.Pistol) {
+        if (projectile.playerId === j) {
+          continue;
+        }
+      }
+      if (SimpleGame.spriteCollides(projectile.pos, projectileDelta, unit.pos, hitAreaGrenade)) {
+        projectile.life = 0;
+
+        // Hit and knockback
+        let damage = this.calcProjectileDamage(projectile, unit.pos);
+        unit.life -= damage;
+        unit.lastHitByPlayerId = projectile.playerId;
+        
+        // TODO Proper knockback
+        if (hitAreaGrenade) {
+          unit.knock = projectile.pos.versorTo(unit.pos);
+          unit.knock.scale(damage * 50);
+        } else {
+          unit.knock.copy(projectile.vel);
+          unit.knock.scale(0.8);
+          return; // Can only hit once
+        }
+      }
+    }
+
+    // Hit mobs
+    for (let [j, mob] of state.mobs.entries()) {
+      if (SimpleGame.spriteCollides(projectile.pos, projectileDelta, mob.pos, hitAreaGrenade)) {
+        projectile.life = 0;
+
+        mob.life -= this.calcProjectileDamage(projectile, mob.pos);
+        mob.hitTime = 0;
+        mobHitByIdxUnit[j] = projectile.playerId;
+        
+        // TODO Proper knockback
+        if (hitAreaGrenade) {
+          let knockVector = projectile.pos.versorTo(mob.pos);
+          mob.pos.addScaled(knockVector, 60);
+        } else {
+          return; // Can only hit once
+        }
+      }
+    }
+  }
+
+  calcProjectileDamage(projectile: ProjectileState, damagePos: Vect): number {
+    if (projectile.type === EProjectileType.Grenade) {
+      let dist = projectile.pos.distanceTo(damagePos);
+      let factor = Math.max(0, Math.min(dist / 150, 1));
+      return Math.ceil(10 - factor * 10);
+    } else {
+      return 1;
+    }
+  }
+
+  static spriteCollides(projectilePos: Vect, projectileDelta: Vect, unitPos: Vect, hitAreaGrenade: boolean) {
+    if (hitAreaGrenade) {
+      return unitPos.distanceTo(projectilePos) < 150;
+    } else {
+      return unitPos.distanceFromSegment(projectilePos, projectileDelta) < 10;
+    }
   }
 
   // The draw method synchronizes the game state with the scene nodes and components
@@ -514,11 +645,11 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     }
   }
 
-  drawSyncComps<TState extends {getId(): number}, 
-                TComp extends Component & IStateComponent<TState>>(
-    states: TState[], 
-    comps: Map<number, TComp>, 
-    type: { new(stateId: number): TComp; }) {
+  drawSyncComps<TState extends { getId(): number },
+    TComp extends Component & IStateComponent<TState>>(
+      states: TState[],
+      comps: Map<number, TComp>,
+      type: { new(stateId: number): TComp; }) {
 
     for (let state of states) {
       let stateId = state.getId();
@@ -541,7 +672,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
         keys.add(state.getId());
       }
 
-      for(let key of comps.keys()) {
+      for (let key of comps.keys()) {
         if (!keys.has(key)) {
           this.scene.removeNode(comps.get(key)!.node!);
           comps.delete(key);
@@ -573,6 +704,7 @@ export class DefaultInput extends NetplayInput<DefaultInput> {
   keyDown: KeyState = KeyState.Released;
   keySpace: KeyState = KeyState.Released;
   keyC: KeyState = KeyState.Released;
+  keyV: KeyState = KeyState.Released;
   joystick1: Vect = new Vect(0, 0);
   joystick2: Vect = new Vect(0, 0);
   joystick3: Vect = new Vect(0, 0);
@@ -586,6 +718,7 @@ export class DefaultInput extends NetplayInput<DefaultInput> {
     td.addProp("keyDown", TypeDescriptor.Int32);
     td.addProp("keySpace", TypeDescriptor.Int32);
     td.addProp("keyC", TypeDescriptor.Int32);
+    td.addProp("keyV", TypeDescriptor.Int32);
     td.addProp("joystick1", Vect.TypeDescriptor);
     td.addProp("joystick2", Vect.TypeDescriptor);
     td.addProp("joystick3", Vect.TypeDescriptor);

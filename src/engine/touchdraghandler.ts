@@ -4,9 +4,11 @@ import { IInputHandler, KeyEventArgs, TouchEventArgs, TouchState } from "./engin
 export class TouchDragHandler implements IInputHandler {
   private touchId: number = -1;
   private downPos: Vect;
+  private isDrag: boolean;
 
   constructor(private readonly isPointValidForDragStart: (point: Vect) => boolean,
-              private readonly dragUpdate: (point: Vect, delta: Vect) => void) {
+              private readonly dragUpdate: (point: Vect, delta: Vect) => void,
+              private readonly onTap: () => void) {
 
   }
 
@@ -22,10 +24,22 @@ export class TouchDragHandler implements IInputHandler {
         switch (touch.state) {
           case TouchState.Release:
             // The touch was released
+            if (!this.isDrag) {
+              this.onTap();
+            }
             this.touchId = -1;
             break;
+
           case TouchState.Update:
-            this.dragUpdate(touch.pos, new Vect(touch.pos.x - this.downPos.x, touch.pos.y - this.downPos.y));
+            let delta = touch.pos.getSubtracted(this.downPos);
+            if (!this.isDrag) {
+              if (delta.length > 10) {
+                this.isDrag = true;
+              }
+            }
+            if (this.isDrag) {  
+              this.dragUpdate(touch.pos, delta);
+            }
             break;
         }
       } else {
@@ -38,6 +52,7 @@ export class TouchDragHandler implements IInputHandler {
         if (touch.state === TouchState.Press && this.isPointValidForDragStart(touch.pos)) {
           this.touchId = touch.id;
           this.downPos = touch.pos.clone();
+          this.isDrag = false;
         }
       }
     }
