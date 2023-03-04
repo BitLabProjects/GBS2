@@ -18,9 +18,10 @@ import { IStateComponent } from "./scene/istatecomp";
 import { MobComp } from "./scene/mobcomp";
 import { Resources } from "./scene/resources";
 import { UnitComp } from "./scene/unitcomp";
-import { DeadUnitState, EMobState, EMobType, GameState, MobState, ProjectileState, UnitState } from "./state/gamestate";
+import { DeadUnitState, EMobState, EMobType, EProjectileType, GameState, MobState, ProjectileState, UnitState } from "./state/gamestate";
 import { HeartComp } from "./ui/heartcomp";
 import { UI } from "./ui/ui";
+import { ProjectileComp } from "./scene/projectilecomp";
 //import { JoystickComp } from "./JoystickComp";
 
 const worldBounds: Rect = new Rect(-400, -400, 800, 800);
@@ -50,12 +51,11 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
   deterministic: boolean = true;
 
   private unitComps: Map<number, UnitComp>;
-  private projectileSpriteComps: SpriteComp[];
+  private projectileComps: Map<number, ProjectileComp>;
   private deadUnitSprites: SpriteComp[];
   private mobComps: Map<number, MobComp>;
 
   private resources: Resources;
-  private projectileSprite: Sprite;
 
   actualKeys: { [key: string]: KeyState } = {};
   currKeys: { [key: string]: KeyState } = {};
@@ -78,13 +78,11 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     }
     //this.state.mobs.push(new MobState(EMobType.Dummy, new Vect(0, 0), 0));
     this.unitComps = new Map<number, UnitComp>();
-    this.projectileSpriteComps = [];
+    this.projectileComps = new Map<number, ProjectileComp>();
     this.deadUnitSprites = [];
     this.mobComps = new Map<number, MobComp>();
 
     this.resources = new Resources(this.scene.engine);
-
-    this.projectileSprite = new Sprite(Texture.createFromUrl(this.scene.engine, `webrtc/bullet1.png`), new Rect(0, 0, 6, 6), new Vect(3, 3));
 
     this.mapBackgroundComp = new MapBackgroundComp();
     Node.createFromComp(this.scene, this.mapBackgroundComp);
@@ -249,10 +247,12 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
             pos.addScaled(sprite.spriteRect.center, 1);
           }
           pos.addScaled(dir, 10);
-          this.state.projectiles.push(new ProjectileState(
+          this.state.spawnProjectile(
+            EProjectileType.Pistol,
             pos,
             new Vect(dir.x * 360, dir.y * 360),
-            60 * 3, player.getID()));
+            60 * 3, 
+            player.getID());
           unitState.coolDown = 0.05;
         }
       }
@@ -269,6 +269,8 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
         if (projectile.playerId === j) {
           continue;
         }
+        // TODO here the mob might be just spawned and not yet be instanced to a component, fix this.
+        // note that this is a cause to sync problems: the hit area must be indipendent from the sprite
         if (this.spriteCollides(projectile.pos, projectileDelta, unit.pos, this.unitComps.get(unit.playerId)!.sprite)) {
           projectile.life = 0;
 
@@ -456,28 +458,29 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
   // The draw method synchronizes the game state with the scene nodes and components
   draw() {
     this.drawSyncComps(this.state.units, this.unitComps, UnitComp);
+    this.drawSyncComps(this.state.projectiles, this.projectileComps, ProjectileComp);
     this.drawSyncComps(this.state.mobs, this.mobComps, MobComp);
 
-    // TODO Extract sync logic and unify with units above
-    for (let [i, projectile] of this.state.projectiles.entries()) {
-      let spriteComp: SpriteComp;
-      if (this.projectileSpriteComps.length <= i) {
-        spriteComp = new SpriteComp(this.projectileSprite.clone());
-        this.projectileSpriteComps.push(spriteComp);
-        Node.createFromComp(this.scene, spriteComp);
-      } else {
-        spriteComp = this.projectileSpriteComps[i];
-      }
-      let t = spriteComp.node!.transform as Transform2D;
-      t.x = projectile.pos.x;
-      t.y = projectile.pos.y;
-    }
+    // // TODO Extract sync logic and unify with units above
+    // for (let [i, projectile] of this.state.projectiles.entries()) {
+    //   let spriteComp: SpriteComp;
+    //   if (this.projectileComps.length <= i) {
+    //     spriteComp = new SpriteComp(this.projectileSprite.clone());
+    //     this.projectileComps.push(spriteComp);
+    //     Node.createFromComp(this.scene, spriteComp);
+    //   } else {
+    //     spriteComp = this.projectileComps[i];
+    //   }
+    //   let t = spriteComp.node!.transform as Transform2D;
+    //   t.x = projectile.pos.x;
+    //   t.y = projectile.pos.y;
+    // }
 
-    // Remove leftover projectile sprites
-    let leftoverProjectileSprites = this.projectileSpriteComps.splice(this.state.projectiles.length);
-    for (let sprite of leftoverProjectileSprites) {
-      this.scene.removeNode(sprite.node!);
-    }
+    // // Remove leftover projectile sprites
+    // let leftoverProjectileSprites = this.projectileComps.splice(this.state.projectiles.length);
+    // for (let sprite of leftoverProjectileSprites) {
+    //   this.scene.removeNode(sprite.node!);
+    // }
 
     for (let [i, unit] of this.state.deadUnits.entries()) {
       let spriteComp: SpriteComp;

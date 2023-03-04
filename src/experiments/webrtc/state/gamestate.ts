@@ -15,12 +15,21 @@ export class UnitState {
 
   getId() { return this.playerId; }
 }
+
+export enum EProjectileType {
+  Pistol = 1,
+  Grenade = 2,
+}
 export class ProjectileState {
   constructor(
+    public projectileId: number,
+    public type: EProjectileType,
     public pos: Vect,
     public vel: Vect,
     public life: number,
     public playerId: number) { }
+
+  getId() { return this.projectileId; }
 }
 export class DeadUnitState {
   constructor(
@@ -62,6 +71,7 @@ export class GameState {
   projectiles: ProjectileState[];
   deadUnits: DeadUnitState[];
   mobs: MobState[];
+  nextProjectileId: number;
   nextMobId: number;
   randVal: number;
 
@@ -71,6 +81,7 @@ export class GameState {
     this.projectiles = [];
     this.deadUnits = [];
     this.mobs = [];
+    this.nextProjectileId = 1;
     this.nextMobId = 1;
     this.randVal = 1337;
   }
@@ -125,6 +136,15 @@ export class GameState {
     return idxNearest;
   }
 
+  spawnProjectile(type: EProjectileType,
+                  pos: Vect,
+                  vel: Vect,
+                  life: number,
+                  playerId: number) {
+    this.projectiles.push(new ProjectileState(this.nextProjectileId, type, pos, vel, life, playerId));
+    this.nextProjectileId += 1;
+  }
+
   spawnMob(type: EMobType, 
            pos: Vect, 
            life: number) {
@@ -158,6 +178,8 @@ export class GameState {
     td.addProp("units", new TypeDescriptor(TypeKind.Array, undefined, unitTd));
     
     let projectileTd = new TypeDescriptor(TypeKind.Generic, ProjectileState);
+    projectileTd.addProp("projectileId", TypeDescriptor.Int32);
+    projectileTd.addProp("type", TypeDescriptor.Int32);
     projectileTd.addProp("pos", Vect.TypeDescriptor);
     projectileTd.addProp("vel", Vect.TypeDescriptor);
     projectileTd.addProp("life", TypeDescriptor.Int32);
@@ -182,6 +204,7 @@ export class GameState {
     mobTd.addProp("life", TypeDescriptor.Int32);
     td.addProp("mobs", new TypeDescriptor(TypeKind.Array, undefined, mobTd));
 
+    td.addProp("nextProjectileId", TypeDescriptor.Int32);
     td.addProp("nextMobId", TypeDescriptor.Int32);
     td.addProp("randVal", TypeDescriptor.Int32);
 

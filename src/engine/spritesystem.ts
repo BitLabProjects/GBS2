@@ -209,8 +209,9 @@ export class SpriteMaterial extends Material {
    
          gl_Position = vec4(pos_Hcs, 0.0, 1.0);
          
-         vec2 texelSize = 1.0 / vec2(textureSize(uSampler, 0));
-         v_uv = a_texrect.xy * texelSize + a_position * a_texrect.zw * texelSize;
+         vec2 texSize = vec2(textureSize(uSampler, 0));
+         vec2 texelSize = 1.0 / texSize;
+         v_uv = vec2(a_texrect.x, texSize.y - a_texrect.y - a_texrect.w) * texelSize + a_position * a_texrect.zw * texelSize;
          v_color = a_color;
        }
       `,

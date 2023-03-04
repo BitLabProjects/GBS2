@@ -3,13 +3,14 @@ import { Sprite } from "../../../engine/spritecomp";
 import { Texture } from "../../../engine/texture";
 import { Rect } from "../../../utils/rect";
 import { Vect } from "../../../utils/vect";
-import { EMobType } from "../state/gamestate";
+import { EMobType, EProjectileType } from "../state/gamestate";
 
 export class Resources {
   public unitSprites: Sprite[];
   public man1Idle: Sprite;
   public man1Walk: Sprite[];
   public mobSprites: Sprite[][];
+  public projectileSprites: Sprite[][];
 
   constructor(engine: Engine) {
     this.unitSprites = [];
@@ -24,6 +25,11 @@ export class Resources {
     this.mobSprites[EMobType.Dummy] = Resources.loadSprites(engine, `webrtc/dummy.png`, 27, 12, 3, 1, new Vect(5, 0));
     this.mobSprites[EMobType.Zombie] = Resources.loadSprites(engine, `webrtc/art/zombie.png`, 32, 32, 1, 1, new Vect(16, 0));
     this.mobSprites[EMobType.ZombieSpawner] = Resources.loadSprites(engine, `webrtc/art/spawner.png`, 32, 32, 1, 1, new Vect(16, 16));
+
+    this.projectileSprites = [];
+    let bulletTex = Texture.createFromUrl(engine, `webrtc/art/bullet.png`);
+    this.projectileSprites[EProjectileType.Pistol] = [new Sprite(bulletTex, new Rect(7, 2, 7, 2), new Vect(7, 1))];
+    this.projectileSprites[EProjectileType.Grenade] = [new Sprite(bulletTex, new Rect(0, 0, 6, 6), new Vect(3, 3))];
   }
 
   static loadSprites(engine: Engine, uriOrTex: string | Texture, 
