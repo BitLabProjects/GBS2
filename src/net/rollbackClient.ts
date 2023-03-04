@@ -7,14 +7,14 @@ import { Game } from "./game";
 import { RollbackNetcode } from "./netcode/rollback";
 
 import * as getUuidByString from 'uuid-by-string'
-import { LeProtMsg_RollbackInit, LeProtMsg_RollbackInput, LeProtMsg_RollbackState, LeProtMsg_RollbackStateHash, RollbackBase } from "./rollbackBase";
+import { LeProtMsg_RollbackFrameHashMismatch, LeProtMsg_RollbackInit, LeProtMsg_RollbackInput, LeProtMsg_RollbackState, LeProtMsg_RollbackStateHash, RollbackBase } from "./rollbackBase";
 import { LeProtCmd } from "./leprot";
 
 export class RollbackClient<TInput extends NetplayInput<TInput>> extends RollbackBase<TInput> {
   private conn: Peer.DataConnection;
 
   constructor(game: Game<TInput>) {
-    super(game);
+    super(game, false);
   }
 
   start(roomName: string) {
@@ -117,6 +117,12 @@ export class RollbackClient<TInput extends NetplayInput<TInput>> extends Rollbac
         msg.input = input.serialize();
         msg.frameSync = frameSync;
         this.conn.send(this.leprot.genMessage(this.leprotMsgId_RollbackInput, msg));
+      },
+      undefined,
+      (keyFrameState) => {
+        //let msg = new LeProtMsg_RollbackFrameHashMismatch();
+        //msg.clientKeyFrame = keyFrameState;
+        //this.conn.send(this.leprot.genMessage(this.leprotMsgId_RollbackFrameHashMismatch, msg));
       }
     );
 

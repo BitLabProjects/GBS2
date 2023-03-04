@@ -68,7 +68,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
   private followCameraComp: FollowCameraComp;
   private currentPlayerId: number;
 
-  private readonly maxLife: number = 10;
+  private static readonly maxLife: number = 10;
 
   onCreate() {
     this.state = new GameState();
@@ -169,16 +169,17 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
   // a local multiplayer game with multiple controllers.
   tick(playerInputs: Map<NetplayPlayer, DefaultInput>) {
     let deltaTime = this.timestep / 1000;
-    this.state.time += deltaTime;
+    let state = this.state;
+    state.time += deltaTime;
 
     this.currentPlayerId = -1;
     for (const [player, input] of playerInputs.entries()) {
       let playerId = player.getID();
-      let unitState = this.state.units[playerId];
+      let unitState = state.units[playerId];
       if (!unitState) {
         let x = playerId === 0 ? -150 : +150;
-        unitState = new UnitState(playerId, new Vect(x, 0), new Vect(0, 0), new Vect(1, 0), this.maxLife, 0, 0, -1, 0);
-        this.state.units[playerId] = unitState;
+        unitState = new UnitState(playerId, new Vect(x, 0), new Vect(0, 0), new Vect(1, 0), SimpleGame.maxLife, 0, 0, -1, 0);
+        state.units[playerId] = unitState;
       }
 
       if (player.isLocalPlayer()) {
@@ -218,15 +219,15 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
         if (input.keyC === KeyState.JustPressed) {
           unitState.carryMobId = 0;
         } else {
-          let mobId = this.state.mobs.findIndex((x) => x.mobId === unitState.carryMobId);
-          this.state.mobs[mobId].pos.copy(unitState.pos)
-          this.state.mobs[mobId].pos.y += 8;
+          let mobId = state.mobs.findIndex((x) => x.mobId === unitState.carryMobId);
+          state.mobs[mobId].pos.copy(unitState.pos)
+          state.mobs[mobId].pos.y += 8;
         }
 
       } else if (input.keyC === KeyState.JustPressed) {
-        let mobIdx = this.state.findMobNearPos(unitState.pos, 16);
+        let mobIdx = state.findMobNearPos(unitState.pos, 16);
         if (mobIdx >= 0) {
-          unitState.carryMobId = this.state.mobs[mobIdx].mobId;
+          unitState.carryMobId = state.mobs[mobIdx].mobId;
         }
 
       } else {
@@ -242,12 +243,10 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
         // Fire
         if (dir) {
           let pos = unitState.pos.clone();
-          let sprite = this.unitComps.get(player.getID())!.sprite;
-          if (sprite) {
-            pos.addScaled(sprite.spriteRect.center, 1);
-          }
+          // TODO handle height from ground
           pos.addScaled(dir, 10);
-          this.state.spawnProjectile(
+          pos.addScaled(new Vect(0, 1), 15);
+          state.spawnProjectile(
             EProjectileType.Pistol,
             pos,
             new Vect(dir.x * 360, dir.y * 360),
@@ -260,18 +259,16 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
     let mobHitByIdxUnit: number[] = [];
 
-    for (let [i, projectile] of this.state.projectiles.entries()) {
+    for (let [i, projectile] of state.projectiles.entries()) {
       let projectileDelta = projectile.vel.clone();
       projectileDelta.scale(deltaTime);
 
       // Hit units
-      for (let [j, unit] of this.state.units.entries()) {
+      for (let [j, unit] of state.units.entries()) {
         if (projectile.playerId === j) {
           continue;
         }
-        // TODO here the mob might be just spawned and not yet be instanced to a component, fix this.
-        // note that this is a cause to sync problems: the hit area must be indipendent from the sprite
-        if (this.spriteCollides(projectile.pos, projectileDelta, unit.pos, this.unitComps.get(unit.playerId)!.sprite)) {
+        if (SimpleGame.spriteCollides(projectile.pos, projectileDelta, unit.pos)) {
           projectile.life = 0;
 
           // Hit and knockback
@@ -286,8 +283,8 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
       if (projectile.life > 0) {
         // Hit mobs
-        for (let [j, mob] of this.state.mobs.entries()) {
-          if (this.spriteCollides(projectile.pos, projectileDelta, mob.pos, this.mobComps.get(mob.mobId)!.sprite)) {
+        for (let [j, mob] of state.mobs.entries()) {
+          if (SimpleGame.spriteCollides(projectile.pos, projectileDelta, mob.pos)) {
             projectile.life = 0;
   
             mob.hitTime = 0;
@@ -300,7 +297,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
       }
 
       if (projectile.life <= 0) {
-        this.state.projectiles.splice(i, 1);
+        state.projectiles.splice(i, 1);
       } else {
         projectile.pos.addScaled(projectileDelta, 1);
         projectile.life -= 1;
@@ -310,19 +307,19 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     // Remove dead mobs
     {
       let i = 0;
-      while (i < this.state.mobs.length) {
-        if (this.state.mobs[i].life <= 0) {
+      while (i < state.mobs.length) {
+        if (state.mobs[i].life <= 0) {
           // Remove the mob by replacing it with the last in the list
-          if (i < this.state.mobs.length - 1) {
-            this.state.mobs[i] = this.state.mobs.pop()!;
+          if (i < state.mobs.length - 1) {
+            state.mobs[i] = state.mobs.pop()!;
           } else {
-            this.state.mobs.pop();
+            state.mobs.pop();
           }
 
           // Assign score
-          let hitByPlayerIdx = this.state.getPlayerById(mobHitByIdxUnit[i]);
+          let hitByPlayerIdx = state.getPlayerById(mobHitByIdxUnit[i]);
           if (hitByPlayerIdx >= 0) {
-            this.state.units[hitByPlayerIdx].score += 1;
+            state.units[hitByPlayerIdx].score += 1;
           }
         } else {
           i++;
@@ -330,7 +327,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
       }
     }
 
-    for (let [i, mob] of this.state.mobs.entries()) {
+    for (let [i, mob] of state.mobs.entries()) {
       mob.hitTime += deltaTime;
       if (mob.life <= 0) continue;
 
@@ -343,12 +340,12 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
           switch (mob.state) {
             case EMobState.Idle: {
               if (mob.stateTime <= 0) {
-                if (this.state.mobs.length < 100) {
-                  this.state.spawnMob(EMobType.Zombie, 
-                    this.state.nextRandVect(80, 150, mob.pos), 
+                if (state.mobs.length < 100) {
+                  state.spawnMob(EMobType.Zombie, 
+                    state.nextRandVect(80, 150, mob.pos), 
                     10);
                   }
-                mob.stateTime = 3 + this.state.nextRandF() * 2;
+                mob.stateTime = 3 + state.nextRandF() * 2;
               } else {
                 mob.stateTime -= deltaTime;
               }
@@ -360,9 +357,9 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
           switch (mob.state) {
             case EMobState.Idle: {
               // Find nearest player
-              let idxUnit = this.state.findUnitNearPos(mob.pos, 16 * 20);
+              let idxUnit = state.findUnitNearPos(mob.pos, 16 * 20);
               if (idxUnit >= 0) {
-                mob.attackPlayerId = this.state.units[idxUnit].playerId;
+                mob.attackPlayerId = state.units[idxUnit].playerId;
                 mob.state = EMobState.Follow;
               }
             } break;
@@ -370,13 +367,13 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
             case EMobState.Follow:
             case EMobState.Attack: {
               // Follow the player
-              let idxUnit = this.state.getPlayerById(mob.attackPlayerId);
+              let idxUnit = state.getPlayerById(mob.attackPlayerId);
               if (idxUnit < 0) {
                 // Player left the game
                 mob.state = EMobState.Idle;
 
               } else {
-                let unit = this.state.units[idxUnit];
+                let unit = state.units[idxUnit];
                 let dir = unit.pos.getSubtracted(mob.pos);
                 let dirLen = dir.length;
                 if (mob.state === EMobState.Attack) {
@@ -390,7 +387,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
                       unit.knock.copy(dir);
                       unit.knock.scale(0.8);
 
-                      mob.stateTime = 2 + this.state.nextRandF() * 3;
+                      mob.stateTime = 2 + state.nextRandF() * 3;
                     } else {
                       mob.state = EMobState.Follow;
                     }
@@ -398,7 +395,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
                 } else {
                   if (dirLen < 30) {
-                    mob.stateTime = 1 + this.state.nextRandF();
+                    mob.stateTime = 1 + state.nextRandF();
                     mob.state = EMobState.Attack;
                     
                   } else if (dirLen > 16 * 30) {
@@ -422,36 +419,33 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     }
 
     // Kill dead units
-    for (let [i, unit] of this.state.units.entries()) {
+    for (let [i, unit] of state.units.entries()) {
       if (unit.life <= 0) {
         // Add a dead unit
-        this.state.deadUnits.push(new DeadUnitState(i, unit.pos.x, unit.pos.y, 100));
+        state.deadUnits.push(new DeadUnitState(i, unit.pos.x, unit.pos.y, 100));
         // Give score to shooting player
         if (unit.lastHitByPlayerId >= 0) {
-          this.state.units[unit.lastHitByPlayerId].score += 1;
+          state.units[unit.lastHitByPlayerId].score += 1;
         }
         // Reset unit to random location
         unit.pos.scale(0); // TODO Random location inside map
-        unit.life = this.maxLife;
+        unit.life = SimpleGame.maxLife;
         unit.knock.scale(0);
         break;
       }
     }
 
     // // Fade dead units
-    // for (let [i, unit] of this.state.deadUnits.entries()) {
+    // for (let [i, unit] of state.deadUnits.entries()) {
     //   unit.fadeTime -= deltaTime;
     //   if (unit.fadeTime <= 0) {
-    //     this.state.deadUnits.splice(i, 1);
+    //     state.deadUnits.splice(i, 1);
     //   }
     // }
   }
 
-  spriteCollides(projectilePos: Vect, projectileDelta: Vect, spritePos: Vect, sprite: Sprite | undefined) {
+  static spriteCollides(projectilePos: Vect, projectileDelta: Vect, spritePos: Vect) {
     let unitCenter = spritePos.clone();
-    if (sprite) {
-      unitCenter.addScaled(sprite.spriteRect.center, 1);
-    }
     return unitCenter.distanceFromSegment(projectilePos, projectileDelta) < 10;
   }
 

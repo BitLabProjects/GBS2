@@ -7,7 +7,7 @@ import { Game } from "./game";
 import { IKeyFrameState, RollbackNetcode } from "./netcode/rollback";
 
 import * as getUuidByString from 'uuid-by-string'
-import { LeProtMsg_RollbackInit, LeProtMsg_RollbackInput, LeProtMsg_RollbackState, LeProtMsg_RollbackStateHash, RollbackBase } from "./rollbackBase";
+import { LeProtMsg_RollbackFrameHashMismatch, LeProtMsg_RollbackInit, LeProtMsg_RollbackInput, LeProtMsg_RollbackState, LeProtMsg_RollbackStateHash, RollbackBase } from "./rollbackBase";
 import { LeProtCmd } from "./leprot";
 import murmur32 from "murmur-32";
 import { BufferWriter } from "../utils/bufferwriter";
@@ -36,7 +36,7 @@ export class RollbackHost<TInput extends NetplayInput<TInput>> extends RollbackB
   currentKeyFrame: number;
 
   constructor(game: Game<TInput>) {
-    super(game);
+    super(game, true);
     this.connectedClients = [];
     this.currentKeyFrame = 0;
   }
@@ -113,7 +113,8 @@ export class RollbackHost<TInput extends NetplayInput<TInput>> extends RollbackB
             if (clientConnData.reSyncSilence > 0) {
               clientConnData.reSyncSilence -= 1;
             }
-            if (clientConnData.frameSync < keyFrameState.frame - 60 && clientConnData.reSyncSilence <= 0) {
+            if (clientConnData.frameSync < keyFrameState.frame - 60 && clientConnData.reSyncSilence <= 0 || clientConnData.fullStateRequested) {
+              //this.log.push(`sent frameSync because: ${clientConnData.fullStateRequested ? 'requested' : 'silence'}`);
               let msg = new LeProtMsg_RollbackState();
               msg.keyFrameState = keyFrameState;
               clientConnData.conn.send(this.leprot.genMessage(this.leprotMsgId_RollbackState, msg));
@@ -136,6 +137,10 @@ export class RollbackHost<TInput extends NetplayInput<TInput>> extends RollbackB
             clientConnData.packetsSent += 1;
           }
         }
+      },
+      undefined,
+      (msg) => {
+        //this.log.push(msg);
       }
     );
 
@@ -179,12 +184,25 @@ export class RollbackHost<TInput extends NetplayInput<TInput>> extends RollbackB
           conn.send(this.leprot.genPingPang(LeProtCmd.Pang, msg.payload.date2));
           break;
 
+        case this.leprotMsgId_RollbackFrameHashMismatch:
+          let rollbackFrameHashMismatch = msg.payload as LeProtMsg_RollbackFrameHashMismatch;
+          let hostKeyFrame = this.rollbackNetcode!.getKeyFrameStateForFrame(rollbackFrameHashMismatch.clientKeyFrame.frame)!;
+          let hostHash =  ObjUtils.getObjectHash(hostKeyFrame.state, this.game.getGameStateTypeDef());
+          let clientHash =  ObjUtils.getObjectHash(rollbackFrameHashMismatch.clientKeyFrame.state, this.game.getGameStateTypeDef());
+          /*this.log.push({
+            hostHash: hostHash,
+            clientHash: clientHash,
+            hostKeyFrame: hostKeyFrame,
+            clientKeyFrame: rollbackFrameHashMismatch.clientKeyFrame
+          });*/
+          clientData.fullStateRequested = true;
+
         case this.leprotMsgId_RollbackInput:
-            let rollbackInput = msg.payload as LeProtMsg_RollbackInput;
-            this.rollbackNetcode!.onRemoteInput(rollbackInput.frame, rollbackInput.playerId, rollbackInput.input);
-            // Update the frameSync for this client with the one just received.
-            clientData.frameSync = rollbackInput.frameSync;
-            console.log(`frameSync: ${rollbackInput.frameSync}`);
+          let rollbackInput = msg.payload as LeProtMsg_RollbackInput;
+          this.rollbackNetcode!.onRemoteInput(rollbackInput.frame, rollbackInput.playerId, rollbackInput.input);
+          // Update the frameSync for this client with the one just received.
+          clientData.frameSync = rollbackInput.frameSync;
+          //this.log.push(`client frameSync: ${rollbackInput.frameSync}`);
           break;
       }
     });

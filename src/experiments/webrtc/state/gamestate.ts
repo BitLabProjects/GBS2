@@ -86,10 +86,6 @@ export class GameState {
     this.randVal = 1337;
   }
 
-  nextRand(max: number): number {
-    this.randVal = ObjUtils.rand(this.randVal);
-    return this.randVal % max;
-  }
   nextRandF(): number {
     this.randVal = ObjUtils.rand(this.randVal);
     return (this.randVal % 10000) / 10000;
@@ -206,7 +202,7 @@ export class GameState {
 
     td.addProp("nextProjectileId", TypeDescriptor.Int32);
     td.addProp("nextMobId", TypeDescriptor.Int32);
-    td.addProp("randVal", TypeDescriptor.Int32);
+    td.addProp("randVal", TypeDescriptor.UInt32);
 
     return td;
   }

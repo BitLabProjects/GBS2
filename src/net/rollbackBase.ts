@@ -45,6 +45,16 @@ export class LeProtMsg_RollbackStateHash {
   }
 }
 
+export class LeProtMsg_RollbackFrameHashMismatch {
+  clientKeyFrame: IKeyFrameState;
+
+  static createTypeDescriptor(keyFrameStateTypeDescr: TypeDescriptor): TypeDescriptor {
+    let td = new TypeDescriptor(TypeKind.Generic, LeProtMsg_RollbackFrameHashMismatch);
+    td.addProp("clientKeyFrame", keyFrameStateTypeDescr);
+    return td;
+  }
+}
+
 export class LeProtMsg_RollbackInput {
   frame: number;
   playerId: number;
@@ -90,10 +100,14 @@ export class RollbackBase<TInput extends NetplayInput<TInput>> {
   leprotMsgId_RollbackInit: number;
   leprotMsgId_RollbackState: number;
   leprotMsgId_RollbackStateHash: number;
+  leprotMsgId_RollbackFrameHashMismatch: number;
   leprotMsgId_RollbackInput: number;
 
-  constructor(game: Game<TInput>) {
+  log: any[];
+
+  constructor(game: Game<TInput>, isHost: boolean) {
     this.game = game;
+    this.log = [];
     this.leprot = new LeProt();
 
     let stateTypeDef = this.game.getGameStateTypeDef();
@@ -108,6 +122,9 @@ export class RollbackBase<TInput extends NetplayInput<TInput>> {
 
     let leprotType_RollbackStateHash = this.leprot.registerType(LeProtMsg_RollbackStateHash.createTypeDescriptor());
     this.leprotMsgId_RollbackStateHash = this.leprot.createMessageType(leprotType_RollbackStateHash);
+    
+    let leprotType_RollbackFrameHashMismatch = this.leprot.registerType(LeProtMsg_RollbackFrameHashMismatch.createTypeDescriptor(keyFrameStateTD));
+    this.leprotMsgId_RollbackFrameHashMismatch = this.leprot.createMessageType(leprotType_RollbackFrameHashMismatch);
 
     let leprotType_RollbackInput = this.leprot.registerType(LeProtMsg_RollbackInput.createTypeDescriptor(inputTypeDef));
     this.leprotMsgId_RollbackInput = this.leprot.createMessageType(leprotType_RollbackInput);
@@ -129,11 +146,12 @@ export class RollbackBase<TInput extends NetplayInput<TInput>> {
     // this.debugButton.style.padding = "5px";
     // this.debugButton.textContent = "Debug";
     // this.debugButton.onclick = () => {
-    //   let content = JSON.stringify(this.rollbackNetcode?.getKeyframeHistory());
+    //   //let content = JSON.stringify(this.rollbackNetcode?.getLog(), undefined, "\r\n");
+    //   let content = JSON.stringify(this.log, undefined, "\r\n");
     //   let blob = new Blob([content], {
     //     type: "application/json",
     //   })
-    //   ObjUtils.downloadBlob(blob, "log_keyframehistory.txt");
+    //   ObjUtils.downloadBlob(blob, `log_keyframehistory_${isHost ? 'host' : 'client'}.txt`);
     // };
     // document.body.appendChild(this.debugButton);
   }
