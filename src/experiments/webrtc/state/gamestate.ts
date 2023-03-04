@@ -111,6 +111,7 @@ export class MobState {
     public mobId: number,
     public type: EMobType,
     public pos: Vect,
+    public knock: Vect,
     public hitTime: number,
     public attackPlayerId: number,
     public state: EMobState,
@@ -147,7 +148,7 @@ export class GameState {
     return (this.randVal % 10000) / 10000;
   }
   nextRandVect(radiusMin: number, radiusMax: number, center: Vect): Vect {
-    let alpha = this.nextRandF() * Math.PI;
+    let alpha = this.nextRandF() * Math.PI * 2;
     let radius = radiusMin + this.nextRandF() * (radiusMax - radiusMin);
     return new Vect(center.x + Math.cos(alpha) * radius,
       center.y + Math.sin(alpha) * radius);
@@ -203,6 +204,7 @@ export class GameState {
     this.mobs.push(new MobState(this.nextMobId,
       type,
       pos,
+      new Vect(0, 0),
       100000,
       -1,
       EMobState.Idle,
@@ -255,6 +257,7 @@ export class GameState {
     mobTd.addProp("mobId", TypeDescriptor.Int32);
     mobTd.addProp("type", TypeDescriptor.Int32);
     mobTd.addProp("pos", Vect.TypeDescriptor);
+    mobTd.addProp("knock", Vect.TypeDescriptor);
     mobTd.addProp("hitTime", TypeDescriptor.Float32);
     mobTd.addProp("attackPlayerId", TypeDescriptor.Int32);
     mobTd.addProp("state", TypeDescriptor.Int32);

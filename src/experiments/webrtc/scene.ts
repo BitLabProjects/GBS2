@@ -279,6 +279,10 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
     for (let [i, mob] of state.mobs.entries()) {
       mob.hitTime += deltaTime;
+      mob.pos.x += (mob.knock.x) * deltaTime;
+      mob.pos.y += (mob.knock.y) * deltaTime;
+      mob.knock.scale(0.85);
+
       if (mob.life <= 0) continue;
 
       // Mob logic by type
@@ -547,15 +551,18 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
       if (SimpleGame.spriteCollides(projectile.pos, projectileDelta, mob.pos, hitAreaGrenade)) {
         projectile.life = 0;
 
-        mob.life -= this.calcProjectileDamage(projectile, mob.pos);
+        let damage = this.calcProjectileDamage(projectile, mob.pos); 
+        mob.life -= damage;
         mob.hitTime = 0;
         mobHitByIdxUnit[j] = projectile.playerId;
         
         // TODO Proper knockback
         if (hitAreaGrenade) {
-          let knockVector = projectile.pos.versorTo(mob.pos);
-          mob.pos.addScaled(knockVector, 60);
+          mob.knock = projectile.pos.versorTo(mob.pos);
+          mob.knock.scale(damage * 50);
         } else {
+          mob.knock.copy(projectile.vel);
+          mob.knock.scale(0.1);
           return; // Can only hit once
         }
       }
