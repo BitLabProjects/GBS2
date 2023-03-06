@@ -265,7 +265,7 @@ export class Engine {
   private onUpdate(deltaTime: number) {
     this.sendInputEvents();
 
-    //this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+    this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
     this.scene.onUpdate(deltaTime);
 
     for (let node of this.removedNodes) {
