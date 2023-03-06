@@ -36,6 +36,8 @@ export class MobComp extends Component {
 
     let t = this.node!.transform as Transform2D;
     t.x = mob.pos.x;
-    t.y = mob.pos.y;
+    t.y = mob.pos.y + mob.pos.z;
+
+    this.spriteComp.depth = t.y;
   }
 }

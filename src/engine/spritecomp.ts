@@ -31,11 +31,13 @@ export class Sprite {
 export class SpriteComp extends Component {
   color: Color;
   sprite: Sprite;
+  depth: number;
 
-  constructor(sprite: Sprite, color?: Color) {
+  constructor(sprite: Sprite, color?: Color, depth: number = 0) {
     super();
     this.sprite = sprite;
     this.color = color ?? new Color(1, 1, 1, 1);
+    this.depth = depth;
   }
 
   clone(): SpriteComp {

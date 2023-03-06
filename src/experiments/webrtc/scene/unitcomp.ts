@@ -33,7 +33,9 @@ export class UnitComp extends Component {
 
     let t = this.node!.transform as Transform2D;
     t.x = unit.pos.x;
-    t.y = unit.pos.y;
+    t.y = unit.pos.y + unit.pos.z;
     t.scaleX = unit.dir.x >= 0 ? 1 : -1;
+    
+    this.spriteComp.depth = t.y;
   }
 }

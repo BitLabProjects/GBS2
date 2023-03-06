@@ -15,6 +15,9 @@ export class Vect3 {
   get length(): number {
     return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
   }
+  get lengthXY(): number {
+    return Math.sqrt(this.x * this.x + this.y * this.y);
+  }
 
   copy(other: Vect3) {
     this.x = other.x;
@@ -35,10 +38,22 @@ export class Vect3 {
     return Math.sqrt(dx * dx + dy * dy + dz * dz);
   }
 
+  distanceToXY(other: Vect3): number {
+    let dx = this.x - other.x;
+    let dy = this.y - other.y;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
   getSubtracted(other: Vect3): Vect3 {
     return new Vect3(this.x - other.x,
                     this.y - other.y,
                     this.z - other.z);
+  }
+
+  getSubtractedXY(other: Vect3): Vect3 {
+    return new Vect3(this.x - other.x,
+                     this.y - other.y,
+                     0);
   }
 
   scale(value: number) {
@@ -80,6 +95,11 @@ export class Vect3 {
     this.z += other.z * scale;
   }
 
+  addScaledXY(other: Vect3, scale: number) {
+    this.x += other.x * scale;
+    this.y += other.y * scale;
+  }
+
   distanceFromSegment(segmentV1: Vect3, segmentDelta: Vect3): number {
     let diffP = this.getSubtracted(segmentV1);
     let rayN = new Vect3(-segmentDelta.y, segmentDelta.x, segmentDelta.z);
@@ -95,6 +115,26 @@ export class Vect3 {
       let p = segmentV1.clone();
       p.addScaled(segmentDelta, 1);
       return this.distanceTo(p);
+    } else {
+      return Math.abs(normalDot);
+    }
+  }
+
+  distanceFromSegmentXY(segmentV1: Vect3, segmentDelta: Vect3): number {
+    let diffP = this.getSubtractedXY(segmentV1);
+    let rayN = new Vect3(-segmentDelta.y, segmentDelta.x, 0);
+    rayN.normalize();
+    let normalDot = diffP.dotProduct(rayN);
+    let pointOnRay = this.clone();
+    pointOnRay.addScaled(rayN, -normalDot);
+
+    let t = pointOnRay.distanceToXY(segmentV1);
+    if (t < 0) {
+      return this.distanceToXY(segmentV1);
+    } else if (t > segmentDelta.lengthXY) {
+      let p = segmentV1.clone();
+      p.addScaledXY(segmentDelta, 1);
+      return this.distanceToXY(p);
     } else {
       return Math.abs(normalDot);
     }

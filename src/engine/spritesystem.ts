@@ -21,13 +21,15 @@ export class SpriteSystem extends EngineSystemWithTrackers {
       engine.genTrackerId(),
       CameraComp));
 
-    this.material = new SpriteMaterial(engine);
+    this.materialSprite = new SpriteMaterial(engine, false);
+    this.materialShadow = new SpriteMaterial(engine, true);
     this.textures = []
     this.componentsForTexture = [];
     this.geometryInstancesForTexture = [];
   }
 
-  private material: Material;
+  private materialSprite: Material;
+  private materialShadow: Material;
   private geometry: Geometry;
 
   private textures: Texture[];
@@ -80,6 +82,7 @@ export class SpriteSystem extends EngineSystemWithTrackers {
         { name: "a_scale", length: 2 },
         { name: "a_offset", length: 2 },
         { name: "a_texrect", length: 4 },
+        { name: "a_depth", length: 1 },
       ]);
     }
 
@@ -142,34 +145,46 @@ export class SpriteSystem extends EngineSystemWithTrackers {
         instanceData[offset + 12] = spriteComp.sprite.textureRect.y;
         instanceData[offset + 13] = spriteComp.sprite.textureRect.width;
         instanceData[offset + 14] = spriteComp.sprite.textureRect.height;
+        instanceData[offset + 15] = spriteComp.depth;
         offset += geometryInstances.entriesPerInstance;
       }
       geometryInstances.updateBuffer();
 
-      this.engine.useMaterial(this.material, [
+      this.engine.useMaterial(this.materialSprite, [
         { name: "u_cameraPos", value: cameraPos }
       ]);
       this.engine.useTexture(this.textures[idxTex], "uSampler");
       this.engine.useGeometry(this.geometry, geometryInstances);
 
+      gl.enable(gl.DEPTH_TEST);
+      gl.depthRange(-100000, +100000);
+      gl.depthFunc(gl.LESS);
       gl.drawElementsInstanced(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0, instancesCount);
+      gl.disable(gl.DEPTH_TEST);
+
+      // this.engine.useMaterial(this.materialShadow, [
+      //   { name: "u_cameraPos", value: cameraPos }
+      // ]);
+      // // TODO put shadowed material upfront and draw only first N instances with shadows
+      // gl.drawElementsInstanced(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0, instancesCount);
     }
   }
 }
 
 export class SpriteMaterial extends Material {
-  constructor(public readonly engine: Engine) {
+  constructor(public readonly engine: Engine, isShadow: boolean) {
     super(engine,
       `#version 300 es
        precision lowp float;
        
        in vec2 a_position; 
-       in vec2 a_pos;
+       in vec3 a_pos;
        in float a_angle;
        in vec4 a_color;
        in vec2 a_scale;
        in vec2 a_offset;
        in vec4 a_texrect;
+       in float a_depth;
        
        // uniforms automatically filled by engine, if present
        uniform vec2 u_viewport;
@@ -207,7 +222,7 @@ export class SpriteMaterial extends Material {
          vec2 viewport_scale = vec2(1.0 / (u_viewport.x * 0.5), 1.0 / (u_viewport.y * 0.5));
          vec2 pos_Hcs = pos_Vcs * viewport_scale;
    
-         gl_Position = vec4(pos_Hcs, 0.0, 1.0);
+         gl_Position = vec4(pos_Hcs, a_depth / 100000.0, 1.0);
          
          vec2 texSize = vec2(textureSize(uSampler, 0));
          vec2 texelSize = 1.0 / texSize;
@@ -226,6 +241,7 @@ export class SpriteMaterial extends Material {
 
        void main() {
          color = texture(uSampler, v_uv) * v_color;
+         if (color.a < 0.0001) discard;
        }
       `);
   }

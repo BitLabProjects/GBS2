@@ -71,23 +71,28 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
   private currentPlayerId: number;
 
   private static readonly maxLife: number = 10;
+  private static readonly testRoom: boolean = false;
 
   onCreate() {
     this.state = new GameState();
 
-    // Place spawners
-    for (let i = 0; i < 10; i++) {
-      this.state.spawnMob(EMobType.ZombieSpawner, Vect3.createRandomXY(worldBounds), 1000);
-    }
-
-    // Place shop things
-    //this.state.spawnMob(EMobType.ShopPortal, Vect.createRandom(worldBounds), 1000);
-    this.state.spawnMob(EMobType.ShopBuyPistol, Vect3.createRandomXY(worldBoundsSmall), 1000);
-    this.state.spawnMob(EMobType.ShopBuyGrenade, Vect3.createRandomXY(worldBoundsSmall), 1000);
-
-    // Place some trees
-    for (let i = 0; i < 25; i++) {
-      this.state.spawnMob(EMobType.Tree, Vect3.createRandomXY(worldBounds), 200);
+    if (SimpleGame.testRoom) {
+      this.state.spawnMob(EMobType.Tree, new Vect3(0, 0, 0), 200);
+    } else {
+      // Place spawners
+      for (let i = 0; i < 10; i++) {
+        this.state.spawnMob(EMobType.ZombieSpawner, Vect3.createRandomXY(worldBounds), 1000);
+      }
+  
+      // Place shop things
+      //this.state.spawnMob(EMobType.ShopPortal, Vect.createRandom(worldBounds), 1000);
+      this.state.spawnMob(EMobType.ShopBuyPistol, Vect3.createRandomXY(worldBoundsSmall), 1000);
+      this.state.spawnMob(EMobType.ShopBuyGrenade, Vect3.createRandomXY(worldBoundsSmall), 1000);
+  
+      // Place some trees
+      for (let i = 0; i < 25; i++) {
+        this.state.spawnMob(EMobType.Tree, Vect3.createRandomXY(worldBounds), 200);
+      }
     }
 
     //this.state.mobs.push(new MobState(EMobType.Dummy, new Vect(0, 0), 0)); 
@@ -208,6 +213,10 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
           0,
           [],
           -1);
+        if (SimpleGame.testRoom) {
+          unitState.addItemToInventory(EItemType.Pistol, 1);
+          unitState.addItemToInventory(EItemType.Grenade, 1);
+        }
         state.units[playerId] = unitState;
       }
 
@@ -496,7 +505,8 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
       let pos = unitState.pos.clone();
       // TODO handle height from ground
       pos.addScaled(dir, 10);
-      pos.addScaled(new Vect3(0, 1, 0), 15);
+      pos.z = 15;
+      //pos.addScaled(new Vect3(0, 1, 0), 15);
       state.spawnProjectile(
         projectileType,
         pos,
@@ -582,9 +592,11 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
   static spriteCollides(projectilePos: Vect3, projectileDelta: Vect3, unitPos: Vect3, hitAreaGrenade: boolean) {
     if (hitAreaGrenade) {
-      return unitPos.distanceTo(projectilePos) < 150;
+      return unitPos.distanceToXY(projectilePos) < 150;
     } else {
-      return unitPos.distanceFromSegment(projectilePos, projectileDelta) < 10;
+      let distance = unitPos.distanceFromSegmentXY(projectilePos, projectileDelta);
+      console.log(distance);
+      return unitPos.distanceFromSegmentXY(projectilePos, projectileDelta) < 10.5;
     }
   }
 
@@ -594,27 +606,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     this.drawSyncComps(this.state.projectiles, this.projectileComps, ProjectileComp);
     this.drawSyncComps(this.state.mobs, this.mobComps, MobComp);
 
-    // // TODO Extract sync logic and unify with units above
-    // for (let [i, projectile] of this.state.projectiles.entries()) {
-    //   let spriteComp: SpriteComp;
-    //   if (this.projectileComps.length <= i) {
-    //     spriteComp = new SpriteComp(this.projectileSprite.clone());
-    //     this.projectileComps.push(spriteComp);
-    //     Node.createFromComp(this.scene, spriteComp);
-    //   } else {
-    //     spriteComp = this.projectileComps[i];
-    //   }
-    //   let t = spriteComp.node!.transform as Transform2D;
-    //   t.x = projectile.pos.x;
-    //   t.y = projectile.pos.y;
-    // }
-
-    // // Remove leftover projectile sprites
-    // let leftoverProjectileSprites = this.projectileComps.splice(this.state.projectiles.length);
-    // for (let sprite of leftoverProjectileSprites) {
-    //   this.scene.removeNode(sprite.node!);
-    // }
-
+    // TODO Make deadUnits like mobs
     for (let [i, unit] of this.state.deadUnits.entries()) {
       let spriteComp: SpriteComp;
       if (this.deadUnitSprites.length <= i) {

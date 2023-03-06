@@ -23,7 +23,9 @@ export class ProjectileComp extends Component {
 
     let t = this.node!.transform as Transform2D;
     t.x = projectile.pos.x;
-    t.y = projectile.pos.y;
+    t.y = projectile.pos.y + projectile.pos.z;
     t.angle = Math.atan2(projectile.vel.y, projectile.vel.x);
+
+    this.spriteComp.depth = t.y;
   }
 }
