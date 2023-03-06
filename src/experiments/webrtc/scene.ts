@@ -76,6 +76,8 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
   onCreate() {
     this.state = new GameState();
 
+    this.state.randVal = Math.round(Date.now());
+
     if (SimpleGame.testRoom) {
       this.state.spawnMob(EMobType.Tree, new Vect3(0, 0, 0), 200);
     } else {
@@ -90,7 +92,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
       this.state.spawnMob(EMobType.ShopBuyGrenade, Vect3.createRandomXY(worldBoundsSmall), 1000);
   
       // Place some trees
-      for (let i = 0; i < 25; i++) {
+      for (let i = 0; i < 50; i++) {
         this.state.spawnMob(EMobType.Tree, Vect3.createRandomXY(worldBounds), 200);
       }
     }
