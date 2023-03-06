@@ -1,12 +1,13 @@
 import { ObjUtils, TypeDescriptor, TypeKind } from "../../../utils/objutils";
-import { Vect } from "../../../utils/vect";
+import { Vect2 } from "../../../utils/vect2";
+import { Vect3 } from "../../../utils/vect3";
 
 export class UnitState {
   constructor(
     public playerId: number,
-    public pos: Vect,
-    public knock: Vect,
-    public dir: Vect,
+    public pos: Vect3,
+    public knock: Vect3,
+    public dir: Vect2,
     public life: number,
     public score: number,
     public coolDown: number,
@@ -76,8 +77,8 @@ export class ProjectileState {
   constructor(
     public projectileId: number,
     public type: EProjectileType,
-    public pos: Vect,
-    public vel: Vect,
+    public pos: Vect3,
+    public vel: Vect3,
     public life: number,
     public playerId: number) { }
 
@@ -110,8 +111,8 @@ export class MobState {
   constructor(
     public mobId: number,
     public type: EMobType,
-    public pos: Vect,
-    public knock: Vect,
+    public pos: Vect3,
+    public knock: Vect3,
     public hitTime: number,
     public attackPlayerId: number,
     public state: EMobState,
@@ -147,11 +148,13 @@ export class GameState {
     this.randVal = ObjUtils.rand(this.randVal);
     return (this.randVal % 10000) / 10000;
   }
-  nextRandVect(radiusMin: number, radiusMax: number, center: Vect): Vect {
+  nextRandVectXY(radiusMin: number, radiusMax: number, center: Vect3): Vect3 {
     let alpha = this.nextRandF() * Math.PI * 2;
     let radius = radiusMin + this.nextRandF() * (radiusMax - radiusMin);
-    return new Vect(center.x + Math.cos(alpha) * radius,
-      center.y + Math.sin(alpha) * radius);
+    return new Vect3(
+      center.x + Math.cos(alpha) * radius,
+      center.y + Math.sin(alpha) * radius,
+      0);
   }
 
   getPlayerById(playerId: number): number {
@@ -163,7 +166,7 @@ export class GameState {
     return -1;
   }
 
-  findMobNearPos(pos: Vect, range: number): number {
+  findMobNearPos(pos: Vect3, range: number): number {
     let idxNearest = -1;
     let nearestDist = range;
     for (let [i, mob] of this.mobs.entries()) {
@@ -176,7 +179,7 @@ export class GameState {
     return idxNearest;
   }
 
-  findUnitNearPos(pos: Vect, range: number): number {
+  findUnitNearPos(pos: Vect3, range: number): number {
     let idxNearest = -1;
     let nearestDist = range;
     for (let [i, unit] of this.units.entries()) {
@@ -190,8 +193,8 @@ export class GameState {
   }
 
   spawnProjectile(type: EProjectileType,
-    pos: Vect,
-    vel: Vect,
+    pos: Vect3,
+    vel: Vect3,
     life: number,
     playerId: number) {
     this.projectiles.push(new ProjectileState(this.nextProjectileId, type, pos, vel, life, playerId));
@@ -199,12 +202,12 @@ export class GameState {
   }
 
   spawnMob(type: EMobType,
-    pos: Vect,
+    pos: Vect3,
     life: number) {
     this.mobs.push(new MobState(this.nextMobId,
       type,
       pos,
-      new Vect(0, 0),
+      new Vect3(0, 0, 0),
       100000,
       -1,
       EMobState.Idle,
@@ -225,9 +228,9 @@ export class GameState {
 
     let unitTd = new TypeDescriptor(TypeKind.Generic, UnitState);
     unitTd.addProp("playerId", TypeDescriptor.Int32);
-    unitTd.addProp("pos", Vect.TypeDescriptor);
-    unitTd.addProp("knock", Vect.TypeDescriptor);
-    unitTd.addProp("dir", Vect.TypeDescriptor);
+    unitTd.addProp("pos", Vect3.TypeDescriptor);
+    unitTd.addProp("knock", Vect3.TypeDescriptor);
+    unitTd.addProp("dir", Vect2.TypeDescriptor);
     unitTd.addProp("life", TypeDescriptor.Int32);
     unitTd.addProp("score", TypeDescriptor.Int32);
     unitTd.addProp("coolDown", TypeDescriptor.Int32);
@@ -240,8 +243,8 @@ export class GameState {
     let projectileTd = new TypeDescriptor(TypeKind.Generic, ProjectileState);
     projectileTd.addProp("projectileId", TypeDescriptor.Int32);
     projectileTd.addProp("type", TypeDescriptor.Int32);
-    projectileTd.addProp("pos", Vect.TypeDescriptor);
-    projectileTd.addProp("vel", Vect.TypeDescriptor);
+    projectileTd.addProp("pos", Vect3.TypeDescriptor);
+    projectileTd.addProp("vel", Vect3.TypeDescriptor);
     projectileTd.addProp("life", TypeDescriptor.Int32);
     projectileTd.addProp("playerId", TypeDescriptor.Int32);
     td.addProp("projectiles", new TypeDescriptor(TypeKind.Array, undefined, projectileTd));
@@ -256,8 +259,8 @@ export class GameState {
     let mobTd = new TypeDescriptor(TypeKind.Generic, MobState);
     mobTd.addProp("mobId", TypeDescriptor.Int32);
     mobTd.addProp("type", TypeDescriptor.Int32);
-    mobTd.addProp("pos", Vect.TypeDescriptor);
-    mobTd.addProp("knock", Vect.TypeDescriptor);
+    mobTd.addProp("pos", Vect3.TypeDescriptor);
+    mobTd.addProp("knock", Vect3.TypeDescriptor);
     mobTd.addProp("hitTime", TypeDescriptor.Float32);
     mobTd.addProp("attackPlayerId", TypeDescriptor.Int32);
     mobTd.addProp("state", TypeDescriptor.Int32);

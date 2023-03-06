@@ -1,13 +1,13 @@
-import { Vect } from "../utils/vect";
+import { Vect2 } from "../utils/vect2";
 import { IInputHandler, KeyEventArgs, TouchEventArgs, TouchState } from "./engine";
 
 export class TouchDragHandler implements IInputHandler {
   private touchId: number = -1;
-  private downPos: Vect;
+  private downPos: Vect2;
   private isDrag: boolean;
 
-  constructor(private readonly isPointValidForDragStart: (point: Vect) => boolean,
-              private readonly dragUpdate: (point: Vect, delta: Vect) => void,
+  constructor(private readonly isPointValidForDragStart: (point: Vect2) => boolean,
+              private readonly dragUpdate: (point: Vect2, delta: Vect2) => void,
               private readonly onTap: () => void) {
 
   }

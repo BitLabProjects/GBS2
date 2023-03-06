@@ -1,19 +1,19 @@
 import { Color } from "../utils/color";
 import { ObjUtils, TypeDescriptor } from "../utils/objutils";
 import { Rect } from "../utils/rect";
-import { Vect } from "../utils/vect";
+import { Vect2 } from "../utils/vect2";
 import { Component } from "./node";
 import { Texture } from "./texture";
 
 export class Sprite {
   _texture: Texture;
   textureRect: Rect;
-  offset: Vect;
+  offset: Vect2;
 
-  constructor(texture: Texture, textureRect: Rect, offset?: Vect) {
+  constructor(texture: Texture, textureRect: Rect, offset?: Vect2) {
     this._texture = texture;
     this.textureRect = textureRect;
-    this.offset = offset ?? new Vect(0, 0);
+    this.offset = offset ?? new Vect2(0, 0);
   }
 
   clone(): Sprite {

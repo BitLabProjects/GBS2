@@ -5,7 +5,7 @@ import { Sprite, SpriteComp } from "../../engine/spritecomp";
 import { Texture } from "../../engine/texture";
 import { Rect } from "../../utils/rect";
 import StatCounter from "../../utils/statcounter";
-import { Vect } from "../../utils/vect";
+import { Vect2 } from "../../utils/vect2";
 
 export class SpritePerfScene extends Scene {
   sprites: Node2D[];
@@ -24,8 +24,8 @@ export class SpritePerfScene extends Scene {
     this.xSpeeds = [];
     this.ySpeeds = [];
     let sprites: Sprite[] = [];
-    sprites.push(new Sprite(Texture.createFromUrl(engine, `flocking/unit1.png`), new Rect(0, 0, 11, 12), new Vect(4, 0)));
-    sprites.push(new Sprite(Texture.createFromUrl(engine, `flocking/unit2.png`), new Rect(0, 0, 13, 14), new Vect(6, 0)));
+    sprites.push(new Sprite(Texture.createFromUrl(engine, `flocking/unit1.png`), new Rect(0, 0, 11, 12), new Vect2(4, 0)));
+    sprites.push(new Sprite(Texture.createFromUrl(engine, `flocking/unit2.png`), new Rect(0, 0, 13, 14), new Vect2(6, 0)));
     for (let i = 0; i < 100 * 1000; i++) {
       let comp = new SpriteComp(sprites[i % 2]);
       let node = Node2D.createFromComp(this, comp);

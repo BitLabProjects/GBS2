@@ -1,4 +1,4 @@
-import { Vect } from "../utils/vect";
+import { Vect2 } from "../utils/vect2";
 import { ComponentTracker, Engine, EngineSystemWithTrackers, IInputSystem, KeyEventArgs, TouchEventArgs } from "./engine";
 import { Component } from "./node";
 

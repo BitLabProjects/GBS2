@@ -5,7 +5,7 @@ import { Texture } from "../../../engine/texture";
 import { TouchDragHandler } from "../../../engine/touchdraghandler";
 import { Color } from "../../../utils/color";
 import { Rect } from "../../../utils/rect";
-import { Vect } from "../../../utils/vect";
+import { Vect2 } from "../../../utils/vect2";
 
 export enum EJoystickType {
   Movement,
@@ -23,8 +23,8 @@ export class JoystickComp extends Component implements IInputHandler {
   constructor(private readonly type: EJoystickType) {
     super();
     this.touchDragHandler = new TouchDragHandler(
-      (point: Vect) => this.joystickCircle.transformUI.bounds.isInside(point),
-      (point: Vect, delta: Vect) => {
+      (point: Vect2) => this.joystickCircle.transformUI.bounds.isInside(point),
+      (point: Vect2, delta: Vect2) => {
         let rtVect = this.joystickCircle.transformUI.renderTransform;
         rtVect.copy(delta);
         rtVect.clampLength(this.type === EJoystickType.Grab ? 20 : 40);

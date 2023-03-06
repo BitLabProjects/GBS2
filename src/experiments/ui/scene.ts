@@ -6,7 +6,7 @@ import { Texture } from "../../engine/texture";
 import { UIRootComp } from "../../engine/uirootcomp";
 import { Color } from "../../utils/color";
 import { Rect } from "../../utils/rect";
-import { Vect } from "../../utils/vect";
+import { Vect2 } from "../../utils/vect2";
 
 export class UIScene extends Scene {
   private nodeRootUI: NodeUI;
@@ -52,8 +52,8 @@ export class UIScene extends Scene {
 
 export class DraggableComponent extends Component {
   private touchId: number = -1;
-  private downPos: Vect;
-  private startRenderTransform: Vect;
+  private downPos: Vect2;
+  private startRenderTransform: Vect2;
 
   onTouchUpdate(tea: TouchEventArgs) {
     let nodeui = this.node! as NodeUI;

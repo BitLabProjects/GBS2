@@ -1,4 +1,4 @@
-import { Vect } from "../utils/vect";
+import { Vect2 } from "../utils/vect2";
 import { Geometry } from "./geometry";
 import { GeometryInstances } from "./geometryinstances";
 import { Material } from "./material";
@@ -9,7 +9,7 @@ var SPECTOR = require("spectorjs");
 
 export interface IUniformValue {
   name: string;
-  value: number | Vect;
+  value: number | Vect2;
 }
 
 export class Engine {
@@ -91,7 +91,7 @@ export class Engine {
         kind = TouchDeviceKind.Finger;
       }
 
-      updateTouchSingle(new Touch(ev.pointerId, kind, state, new Vect(ev.clientX, ev.clientY)));
+      updateTouchSingle(new Touch(ev.pointerId, kind, state, new Vect2(ev.clientX, ev.clientY)));
       raiseTouchInputSystemEventAndClean();
     }
 
@@ -304,7 +304,7 @@ export class Engine {
       for(let uniformValue of uniformValues) {
         const uniformLocation = this.gl.getUniformLocation(this.materialShaderProgram, uniformValue.name);
         if (uniformLocation) {
-          if (uniformValue.value instanceof Vect) {
+          if (uniformValue.value instanceof Vect2) {
             this.gl.uniform2f(uniformLocation, uniformValue.value.x, uniformValue.value.y);
           } else {
             this.gl.uniform1f(uniformLocation, uniformValue.value);
@@ -378,7 +378,7 @@ export class Touch {
     public readonly id: number,
     public readonly deviceKind: TouchDeviceKind,
     public readonly state: TouchState,
-    public readonly pos: Vect) { }
+    public readonly pos: Vect2) { }
 }
 export class TouchEventArgs {
   constructor(public readonly touches: Touch[]) { }

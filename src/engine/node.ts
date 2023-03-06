@@ -1,5 +1,5 @@
 import { Rect } from "../utils/rect";
-import { Vect } from "../utils/vect";
+import { Vect2 } from "../utils/vect2";
 import { Scene } from "./scene";
 
 export class Component {
@@ -72,12 +72,12 @@ export class TransformUI implements Transform {
     public alignH: Align,
     public alignV: Align,
     public margin: Margin,
-    public renderTransform: Vect) {
+    public renderTransform: Vect2) {
     this.bounds = new Rect(0, 0, 0, 0);
   }
 
   static default(): TransformUI {
-    return new TransformUI(-1, -1, Align.Stretch, Align.Stretch, Margin.uniform(0), new Vect(0, 0));
+    return new TransformUI(-1, -1, Align.Stretch, Align.Stretch, Margin.uniform(0), new Vect2(0, 0));
   }
 }
 

@@ -1,43 +1,50 @@
 import { TypeDescriptor, TypeKind } from "./objutils";
 import { Rect } from "./rect";
 
-export class Vect {
-  constructor(public x: number, public y: number) {
+export class Vect3 {
+  constructor(public x: number, public y: number, public z: number) {
   }
 
-  static createRandom(rect: Rect) {
-    return new Vect(
+  static createRandomXY(rect: Rect) {
+    return new Vect3(
       Math.random() * rect.width + rect.x,
-      Math.random() * rect.height + rect.y);
+      Math.random() * rect.height + rect.y,
+      0);
   }
 
   get length(): number {
-    return Math.sqrt(this.x * this.x + this.y * this.y);
+    return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
   }
 
-  copy(other: Vect) {
+  copy(other: Vect3) {
     this.x = other.x;
     this.y = other.y;
+    this.z = other.z;
   }
 
-  set(x: number, y: number) {
+  set(x: number, y: number, z: number) {
     this.x = x;
     this.y = y;
+    this.z = z;
   }
 
-  distanceTo(other: Vect): number {
+  distanceTo(other: Vect3): number {
     let dx = this.x - other.x;
     let dy = this.y - other.y;
-    return Math.sqrt(dx * dx + dy * dy);
+    let dz = this.z - other.z;
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
   }
 
-  getSubtracted(other: Vect): Vect {
-    return new Vect(this.x - other.x, this.y - other.y);
+  getSubtracted(other: Vect3): Vect3 {
+    return new Vect3(this.x - other.x,
+                    this.y - other.y,
+                    this.z - other.z);
   }
 
   scale(value: number) {
     this.x *= value;
     this.y *= value;
+    this.z *= value;
   }
 
   clampLength(maxLength: number) {
@@ -56,25 +63,26 @@ export class Vect {
     }
   }
 
-  vectorTo(other: Vect): Vect {
+  vectorTo(other: Vect3): Vect3 {
     let result = other.getSubtracted(this);
     return result;
   }
 
-  versorTo(other: Vect): Vect {
+  versorTo(other: Vect3): Vect3 {
     let result = other.getSubtracted(this);
     result.normalize();
     return result;
   }
 
-  addScaled(other: Vect, scale: number) {
+  addScaled(other: Vect3, scale: number) {
     this.x += other.x * scale;
     this.y += other.y * scale;
+    this.z += other.z * scale;
   }
 
-  distanceFromSegment(segmentV1: Vect, segmentDelta: Vect): number {
+  distanceFromSegment(segmentV1: Vect3, segmentDelta: Vect3): number {
     let diffP = this.getSubtracted(segmentV1);
-    let rayN = new Vect(-segmentDelta.y, segmentDelta.x);
+    let rayN = new Vect3(-segmentDelta.y, segmentDelta.x, segmentDelta.z);
     rayN.normalize();
     let normalDot = diffP.dotProduct(rayN);
     let pointOnRay = this.clone();
@@ -92,19 +100,20 @@ export class Vect {
     }
   }
 
-  dotProduct(other: Vect) {
-    return this.x * other.x + this.y * other.y;
+  dotProduct(other: Vect3) {
+    return this.x * other.x + this.y * other.y + this.z * other.z;
   }
 
-  clone(): Vect {
-    return new Vect(this.x, this.y);
+  clone(): Vect3 {
+    return new Vect3(this.x, this.y, this.z);
   }
 
-  static readonly TypeDescriptor: TypeDescriptor = Vect.createTypeDescriptor();
+  static readonly TypeDescriptor: TypeDescriptor = Vect3.createTypeDescriptor();
   static createTypeDescriptor(): TypeDescriptor {
-    let td = new TypeDescriptor(TypeKind.Generic, Vect);
+    let td = new TypeDescriptor(TypeKind.Generic, Vect3);
     td.addProp("x", TypeDescriptor.Float32);
     td.addProp("y", TypeDescriptor.Float32);
+    td.addProp("z", TypeDescriptor.Float32);
     return td;
   }
 }

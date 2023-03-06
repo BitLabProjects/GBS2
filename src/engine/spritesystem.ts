@@ -1,4 +1,4 @@
-import { Vect } from "../utils/vect";
+import { Vect2 } from "../utils/vect2";
 import { CameraComp } from "./cameracomp";
 import { ComponentTracker, Engine, EngineSystemWithTrackers } from "./engine";
 import { Geometry } from "./geometry";
@@ -106,7 +106,7 @@ export class SpriteSystem extends EngineSystemWithTrackers {
   onUpdate(deltaTime: number): void {
     let gl = this.engine.gl;
 
-    let cameraPos = new Vect(0, 0);
+    let cameraPos = new Vect2(0, 0);
     let camera = this.trackers[1].components[0] as CameraComp;
     if (camera instanceof CameraComp) {
       // If a camera was found, use its position

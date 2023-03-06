@@ -10,7 +10,7 @@ import { RollbackHost } from "../../net/rollbackHost";
 import { NetplayInput, NetplayPlayer, SerializedState } from "../../net/types";
 import { ObjUtils, TypeDescriptor, TypeKind } from "../../utils/objutils";
 import { Rect } from "../../utils/rect";
-import { Vect } from "../../utils/vect";
+import { Vect2 } from "../../utils/vect2";
 import { FullScreenQuad } from "../flocking/fullscreenquad";
 import { EJoystickType, JoystickComp } from "./ui/joystickcomp";
 import { FollowCameraComp } from "./scene/followcameracomp";
@@ -22,6 +22,7 @@ import { DeadUnitState, EItemType, EMobState, EMobType, EProjectileType, GameSta
 import { HeartComp } from "./ui/heartcomp";
 import { UI } from "./ui/ui";
 import { ProjectileComp } from "./scene/projectilecomp";
+import { Vect3 } from "../../utils/vect3";
 //import { JoystickComp } from "./JoystickComp";
 
 const worldBounds: Rect = new Rect(-1000, -1000, 2000, 2000);
@@ -76,20 +77,20 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
     // Place spawners
     for (let i = 0; i < 10; i++) {
-      this.state.spawnMob(EMobType.ZombieSpawner, Vect.createRandom(worldBounds), 1000);
+      this.state.spawnMob(EMobType.ZombieSpawner, Vect3.createRandomXY(worldBounds), 1000);
     }
 
     // Place shop things
     //this.state.spawnMob(EMobType.ShopPortal, Vect.createRandom(worldBounds), 1000);
-    this.state.spawnMob(EMobType.ShopBuyPistol, Vect.createRandom(worldBoundsSmall), 1000);
-    this.state.spawnMob(EMobType.ShopBuyGrenade, Vect.createRandom(worldBoundsSmall), 1000);
+    this.state.spawnMob(EMobType.ShopBuyPistol, Vect3.createRandomXY(worldBoundsSmall), 1000);
+    this.state.spawnMob(EMobType.ShopBuyGrenade, Vect3.createRandomXY(worldBoundsSmall), 1000);
 
     // Place some trees
     for (let i = 0; i < 25; i++) {
-      this.state.spawnMob(EMobType.Tree, Vect.createRandom(worldBounds), 200);
+      this.state.spawnMob(EMobType.Tree, Vect3.createRandomXY(worldBounds), 200);
     }
 
-    //this.state.mobs.push(new MobState(EMobType.Dummy, new Vect(0, 0), 0));
+    //this.state.mobs.push(new MobState(EMobType.Dummy, new Vect(0, 0), 0)); 
     this.unitComps = new Map<number, UnitComp>();
     this.projectileComps = new Map<number, ProjectileComp>();
     this.deadUnitSprites = [];
@@ -197,9 +198,9 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
         let x = playerId === 0 ? -150 : +150;
         unitState = new UnitState(
           playerId,
-          new Vect(x, 0),
-          new Vect(0, 0),
-          new Vect(1, 0),
+          new Vect3(x, 0, 0),
+          new Vect3(0, 0, 0),
+          new Vect2(1, 0),
           SimpleGame.maxLife,
           0,
           0,
@@ -296,7 +297,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
               if (mob.stateTime <= 0) {
                 if (state.mobs.length < 500) {
                   state.spawnMob(EMobType.Zombie,
-                    state.nextRandVect(80, 150, mob.pos),
+                    state.nextRandVectXY(80, 150, mob.pos),
                     10);
                 }
                 mob.stateTime = 3 + state.nextRandF() * 2;
@@ -400,7 +401,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
 
   tickPlayerMovement(unitState: UnitState, input: DefaultInput, deltaTime: number) {
     // Generate player velocity from input keys.
-    const vel = new Vect(
+    const vel = new Vect2(
       (KeyStateUtils.isPressed(input.keyLeft) ? -1 : 0) +
       (KeyStateUtils.isPressed(input.keyRight) ? 1 : 0) +
       (input.joystick1.x),
@@ -482,11 +483,11 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     let projectileType = item.type === EItemType.Grenade ? EProjectileType.Grenade : EProjectileType.Pistol;
     let projectileLife = projectileType === EProjectileType.Pistol ? 180 : 60;
 
-    let dir: Vect | undefined;
+    let dir: Vect3 | undefined;
     if (KeyStateUtils.isPressed(input.keySpace)) {
-      dir = unitState.dir.clone();
+      dir = new Vect3(unitState.dir.x, unitState.dir.y, 0);
     } else if (input.joystick2.x !== 0 || input.joystick2.y !== 0) {
-      dir = new Vect(input.joystick2.x, input.joystick2.y);
+      dir = new Vect3(input.joystick2.x, input.joystick2.y, 0);
       dir.normalize();
     }
 
@@ -495,11 +496,11 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
       let pos = unitState.pos.clone();
       // TODO handle height from ground
       pos.addScaled(dir, 10);
-      pos.addScaled(new Vect(0, 1), 15);
+      pos.addScaled(new Vect3(0, 1, 0), 15);
       state.spawnProjectile(
         projectileType,
         pos,
-        new Vect(dir.x * 360, dir.y * 360),
+        new Vect3(dir.x * 360, dir.y * 360, 0),
         projectileLife,
         unitState.playerId);
 
@@ -518,7 +519,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     }
   }
 
-  tickProjectileHit(state: GameState, projectile: ProjectileState, projectileDelta: Vect, hitAreaGrenade: boolean, mobHitByIdxUnit: number[]) {
+  tickProjectileHit(state: GameState, projectile: ProjectileState, projectileDelta: Vect3, hitAreaGrenade: boolean, mobHitByIdxUnit: number[]) {
     for (let [j, unit] of state.units.entries()) {
       // Avoid auto-hit with ammunition
       if (projectile.type === EProjectileType.Pistol) {
@@ -569,7 +570,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     }
   }
 
-  calcProjectileDamage(projectile: ProjectileState, damagePos: Vect): number {
+  calcProjectileDamage(projectile: ProjectileState, damagePos: Vect3): number {
     if (projectile.type === EProjectileType.Grenade) {
       let dist = projectile.pos.distanceTo(damagePos);
       let factor = Math.max(0, Math.min(dist / 150, 1));
@@ -579,7 +580,7 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     }
   }
 
-  static spriteCollides(projectilePos: Vect, projectileDelta: Vect, unitPos: Vect, hitAreaGrenade: boolean) {
+  static spriteCollides(projectilePos: Vect3, projectileDelta: Vect3, unitPos: Vect3, hitAreaGrenade: boolean) {
     if (hitAreaGrenade) {
       return unitPos.distanceTo(projectilePos) < 150;
     } else {
@@ -712,9 +713,9 @@ export class DefaultInput extends NetplayInput<DefaultInput> {
   keySpace: KeyState = KeyState.Released;
   keyC: KeyState = KeyState.Released;
   keyV: KeyState = KeyState.Released;
-  joystick1: Vect = new Vect(0, 0);
-  joystick2: Vect = new Vect(0, 0);
-  joystick3: Vect = new Vect(0, 0);
+  joystick1: Vect2 = new Vect2(0, 0);
+  joystick2: Vect2 = new Vect2(0, 0);
+  joystick3: Vect2 = new Vect2(0, 0);
 
   static readonly TypeDescriptor: TypeDescriptor = DefaultInput.createTypeDescriptor();
   static createTypeDescriptor(): TypeDescriptor {
@@ -726,9 +727,9 @@ export class DefaultInput extends NetplayInput<DefaultInput> {
     td.addProp("keySpace", TypeDescriptor.Int32);
     td.addProp("keyC", TypeDescriptor.Int32);
     td.addProp("keyV", TypeDescriptor.Int32);
-    td.addProp("joystick1", Vect.TypeDescriptor);
-    td.addProp("joystick2", Vect.TypeDescriptor);
-    td.addProp("joystick3", Vect.TypeDescriptor);
+    td.addProp("joystick1", Vect2.TypeDescriptor);
+    td.addProp("joystick2", Vect2.TypeDescriptor);
+    td.addProp("joystick3", Vect2.TypeDescriptor);
     return td;
   }
 }

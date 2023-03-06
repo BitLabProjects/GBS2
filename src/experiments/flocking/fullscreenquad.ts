@@ -2,20 +2,20 @@ import { Geometry } from '../../engine/geometry';
 import { Material } from '../../engine/material'
 import { Component } from '../../engine/node'
 import { Scene } from '../../engine/scene';
-import { Vect } from '../../utils/vect';
+import { Vect2 } from '../../utils/vect2';
 
 export class FullScreenQuad extends Component {
   material: Material;
   geometry: Geometry;
 
-  cameraPos: Vect;
+  cameraPos: Vect2;
 
   private vertexBuffer: WebGLBuffer;
   private elementBuffer: WebGLBuffer;
 
   constructor(private additionalFragmentCode?: string) {
     super();
-    this.cameraPos = new Vect(0, 0);
+    this.cameraPos = new Vect2(0, 0);
   }
 
   onCreate(): void {
