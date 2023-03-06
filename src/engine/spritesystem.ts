@@ -157,7 +157,7 @@ export class SpriteSystem extends EngineSystemWithTrackers {
       this.engine.useGeometry(this.geometry, geometryInstances);
 
       gl.enable(gl.DEPTH_TEST);
-      gl.depthRange(-100000, +100000);
+      gl.depthRange(-10000, +10000);
       gl.depthFunc(gl.LESS);
       gl.drawElementsInstanced(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0, instancesCount);
       gl.disable(gl.DEPTH_TEST);
@@ -222,7 +222,7 @@ export class SpriteMaterial extends Material {
          vec2 viewport_scale = vec2(1.0 / (u_viewport.x * 0.5), 1.0 / (u_viewport.y * 0.5));
          vec2 pos_Hcs = pos_Vcs * viewport_scale;
    
-         gl_Position = vec4(pos_Hcs, a_depth / 100000.0, 1.0);
+         gl_Position = vec4(pos_Hcs, a_depth / 10000.0, 1.0);
          
          vec2 texSize = vec2(textureSize(uSampler, 0));
          vec2 texelSize = 1.0 / texSize;
