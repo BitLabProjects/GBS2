@@ -596,8 +596,6 @@ class SimpleGame extends Component implements Game<DefaultInput>, IInputHandler 
     if (hitAreaGrenade) {
       return unitPos.distanceToXY(projectilePos) < 150;
     } else {
-      let distance = unitPos.distanceFromSegmentXY(projectilePos, projectileDelta);
-      console.log(distance);
       return unitPos.distanceFromSegmentXY(projectilePos, projectileDelta) < 10.5;
     }
   }
